@@ -12,7 +12,8 @@
     "setup": "npm install && npm run migrate",
     "health": "curl http://localhost:3000/api/health",
     "logs": "tail -f logs/combined.log",
-    "logs:error": "tail -f logs/error.log"
+    "logs:error": "tail -f logs/error.log",
+    "build": "echo 'No build step necessary for backend'"
   },
   "keywords": [
     "campuslink",
