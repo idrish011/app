@@ -1,0 +1,59 @@
+{
+  "name": "campuslink-backend",
+  "version": "1.0.0",
+  "description": "CampusLink Backend API - Production Ready",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "node test-security.js",
+    "test:security": "node test-security.js",
+    "migrate": "node migrate-*.js",
+    "setup": "npm install && npm run migrate",
+    "health": "curl http://localhost:3000/api/health",
+    "logs": "tail -f logs/combined.log",
+    "logs:error": "tail -f logs/error.log"
+  },
+  "keywords": [
+    "campuslink",
+    "education",
+    "api",
+    "nodejs",
+    "express",
+    "sqlite"
+  ],
+  "author": "CampusLink Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "sqlite3": "^5.1.6",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1",
+    "firebase-admin": "^12.0.0",
+    "form-data": "^4.0.0",
+    "compression": "^1.7.4",
+    "express-http-proxy": "^1.6.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/campuslink/backend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/campuslink/backend/issues"
+  },
+  "homepage": "https://github.com/campuslink/backend#readme"
+}

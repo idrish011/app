@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  campuslink-backend:
+    build: .
+    container_name: campuslink-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - RATE_LIMIT_ENABLED=true
+      - SECURITY_HEADERS_ENABLED=true
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS}
+    volumes:
+      - ./campuslink.db:/app/campuslink.db
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    networks:
+      - campuslink-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: campuslink-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - campuslink-backend
+    networks:
+      - campuslink-network
+
+networks:
+  campuslink-network:
+    driver: bridge
+
+volumes:
+  campuslink-data:
+    driver: local 
