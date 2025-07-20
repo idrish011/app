@@ -50,7 +50,8 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGIN
   'http://localhost:3000',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  'http://localhost:8081'
+  'http://localhost:8081',
+  'https://app-in84.onrender.com'
 ];
 
 // Initialize database
