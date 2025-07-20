@@ -41,7 +41,8 @@
     "multer": "^1.4.5-lts.1",
     "sqlite3": "^5.1.6",
     "winston": "^3.11.0",
-    "winston-daily-rotate-file": "^4.7.1"
+    "winston-daily-rotate-file": "^4.7.1",
+    "xss-clean": "^0.1.4"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
