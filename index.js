@@ -37,6 +37,7 @@ const Database = require('./models/database');
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // SECURITY: Enforce strong JWT secret in production
