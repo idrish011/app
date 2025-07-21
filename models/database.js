@@ -407,6 +407,20 @@ class Database {
       FOREIGN KEY (college_id) REFERENCES colleges (id)
     )`);
 
+    // Activity Logs table
+    await runAsync(`CREATE TABLE IF NOT EXISTS activity_logs (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      action TEXT NOT NULL,
+      entity TEXT,
+      entity_id TEXT,
+      details TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    )`);
+
     console.log('Multi-tenant SaaS database schema initialized successfully');
     return true;
   }
