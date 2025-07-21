@@ -13,9 +13,12 @@ class Database {
     });
   }
 
-  initializeTables() {
+  async initializeTables() {
+    const runAsync = (sql) => new Promise((resolve, reject) => {
+      this.db.run(sql, (err) => err ? reject(err) : resolve());
+    });
     // Colleges/Tenants table
-    this.db.run(`CREATE TABLE IF NOT EXISTS colleges (
+    await runAsync(`CREATE TABLE IF NOT EXISTS colleges (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       domain TEXT UNIQUE,
@@ -33,9 +36,8 @@ class Database {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
-
     // Users table with role-based access
-    this.db.run(`CREATE TABLE IF NOT EXISTS users (
+    await runAsync(`CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       college_id TEXT,
       username TEXT NOT NULL,
@@ -57,7 +59,7 @@ class Database {
     )`);
 
     // Courses table
-    this.db.run(`CREATE TABLE IF NOT EXISTS courses (
+    await runAsync(`CREATE TABLE IF NOT EXISTS courses (
       id TEXT PRIMARY KEY,
       college_id TEXT NOT NULL,
       name TEXT NOT NULL,
@@ -72,7 +74,7 @@ class Database {
     )`);
 
     // Academic Years table
-    this.db.run(`CREATE TABLE IF NOT EXISTS academic_years (
+    await runAsync(`CREATE TABLE IF NOT EXISTS academic_years (
       id TEXT PRIMARY KEY,
       college_id TEXT NOT NULL,
       name TEXT NOT NULL,
@@ -84,7 +86,7 @@ class Database {
     )`);
 
     // Semesters table
-    this.db.run(`CREATE TABLE IF NOT EXISTS semesters (
+    await runAsync(`CREATE TABLE IF NOT EXISTS semesters (
       id TEXT PRIMARY KEY,
       academic_year_id TEXT NOT NULL,
       name TEXT NOT NULL,
@@ -96,7 +98,7 @@ class Database {
     )`);
 
     // Admissions table
-    this.db.run(`CREATE TABLE IF NOT EXISTS admissions (
+    await runAsync(`CREATE TABLE IF NOT EXISTS admissions (
       id TEXT PRIMARY KEY,
       college_id TEXT NOT NULL,
       course_id TEXT NOT NULL,
@@ -115,7 +117,7 @@ class Database {
     )`);
 
     // Fee Structure table
-    this.db.run(`CREATE TABLE IF NOT EXISTS fee_structures (
+    await runAsync(`CREATE TABLE IF NOT EXISTS fee_structures (
       id TEXT PRIMARY KEY,
       college_id TEXT NOT NULL,
       course_id TEXT NOT NULL,
@@ -131,7 +133,7 @@ class Database {
     )`);
 
     // Fee Collections table
-    this.db.run(`CREATE TABLE IF NOT EXISTS fee_collections (
+    await runAsync(`CREATE TABLE IF NOT EXISTS fee_collections (
       id TEXT PRIMARY KEY,
       college_id TEXT NOT NULL,
       student_id TEXT NOT NULL,
@@ -152,7 +154,7 @@ class Database {
     )`);
 
     // Classes table
-    this.db.run(`CREATE TABLE IF NOT EXISTS classes (
+    await runAsync(`CREATE TABLE IF NOT EXISTS classes (
       id TEXT PRIMARY KEY,
       college_id TEXT NOT NULL,
       course_id TEXT NOT NULL,
@@ -171,7 +173,7 @@ class Database {
     )`);
 
     // Class Enrollments table
-    this.db.run(`CREATE TABLE IF NOT EXISTS class_enrollments (
+    await runAsync(`CREATE TABLE IF NOT EXISTS class_enrollments (
       id TEXT PRIMARY KEY,
       class_id TEXT NOT NULL,
       student_id TEXT NOT NULL,
@@ -185,7 +187,7 @@ class Database {
     )`);
 
     // Attendance table
-    this.db.run(`CREATE TABLE IF NOT EXISTS attendance (
+    await runAsync(`CREATE TABLE IF NOT EXISTS attendance (
       id TEXT PRIMARY KEY,
       class_id TEXT NOT NULL,
       student_id TEXT NOT NULL,
@@ -201,7 +203,7 @@ class Database {
     )`);
 
     // Assignments table
-    this.db.run(`CREATE TABLE IF NOT EXISTS assignments (
+    await runAsync(`CREATE TABLE IF NOT EXISTS assignments (
       id TEXT PRIMARY KEY,
       class_id TEXT NOT NULL,
       title TEXT NOT NULL,
@@ -220,7 +222,7 @@ class Database {
     )`);
 
     // Grades table
-    this.db.run(`CREATE TABLE IF NOT EXISTS grades (
+    await runAsync(`CREATE TABLE IF NOT EXISTS grades (
       id TEXT PRIMARY KEY,
       assignment_id TEXT NOT NULL,
       student_id TEXT NOT NULL,
@@ -236,7 +238,7 @@ class Database {
     )`);
 
     // Events table
-    this.db.run(`CREATE TABLE IF NOT EXISTS events (
+    await runAsync(`CREATE TABLE IF NOT EXISTS events (
       id TEXT PRIMARY KEY,
       college_id TEXT NOT NULL,
       title TEXT NOT NULL,
@@ -253,7 +255,7 @@ class Database {
     )`);
 
     // Assignment Submissions table
-    this.db.run(`CREATE TABLE IF NOT EXISTS assignment_submissions (
+    await runAsync(`CREATE TABLE IF NOT EXISTS assignment_submissions (
       id TEXT PRIMARY KEY,
       assignment_id TEXT NOT NULL,
       student_id TEXT NOT NULL,
@@ -273,7 +275,7 @@ class Database {
     )`);
 
     // Results table
-    this.db.run(`CREATE TABLE IF NOT EXISTS results (
+    await runAsync(`CREATE TABLE IF NOT EXISTS results (
       id TEXT PRIMARY KEY,
       class_id TEXT NOT NULL,
       student_id TEXT NOT NULL,
@@ -295,7 +297,7 @@ class Database {
     )`);
 
     // Parent-Student Relationships table
-    this.db.run(`CREATE TABLE IF NOT EXISTS parent_student_relationships (
+    await runAsync(`CREATE TABLE IF NOT EXISTS parent_student_relationships (
       id TEXT PRIMARY KEY,
       parent_id TEXT NOT NULL,
       student_id TEXT NOT NULL,
@@ -308,7 +310,7 @@ class Database {
     )`);
 
     // Notifications table
-    this.db.run(`CREATE TABLE IF NOT EXISTS notifications (
+    await runAsync(`CREATE TABLE IF NOT EXISTS notifications (
       id TEXT PRIMARY KEY,
       college_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
@@ -322,7 +324,7 @@ class Database {
     )`);
 
     // API Keys table for additional security
-    this.db.run(`CREATE TABLE IF NOT EXISTS api_keys (
+    await runAsync(`CREATE TABLE IF NOT EXISTS api_keys (
       id TEXT PRIMARY KEY,
       college_id TEXT NOT NULL,
       user_id TEXT,
@@ -336,7 +338,7 @@ class Database {
     )`);
 
     // Rate limiting logs
-    this.db.run(`CREATE TABLE IF NOT EXISTS rate_limit_logs (
+    await runAsync(`CREATE TABLE IF NOT EXISTS rate_limit_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       college_id TEXT,
       ip_address TEXT NOT NULL,
@@ -346,7 +348,7 @@ class Database {
     )`);
 
     // Contact Messages table
-    this.db.run(`CREATE TABLE IF NOT EXISTS contact_messages (
+    await runAsync(`CREATE TABLE IF NOT EXISTS contact_messages (
       id TEXT PRIMARY KEY,
       college_id TEXT,
       user_id TEXT,
@@ -361,7 +363,7 @@ class Database {
     )`);
 
     // App Ratings table
-    this.db.run(`CREATE TABLE IF NOT EXISTS app_ratings (
+    await runAsync(`CREATE TABLE IF NOT EXISTS app_ratings (
       id TEXT PRIMARY KEY,
       college_id TEXT,
       user_id TEXT,
@@ -373,7 +375,7 @@ class Database {
     )`);
 
     // Student Fee Status table
-    this.db.run(`CREATE TABLE IF NOT EXISTS student_fee_status (
+    await runAsync(`CREATE TABLE IF NOT EXISTS student_fee_status (
       id TEXT PRIMARY KEY,
       college_id TEXT NOT NULL,
       student_id TEXT NOT NULL,
@@ -392,7 +394,7 @@ class Database {
     )`);
 
     // Admission Inquiries table
-    this.db.run(`CREATE TABLE IF NOT EXISTS admission_inquiries (
+    await runAsync(`CREATE TABLE IF NOT EXISTS admission_inquiries (
       id TEXT PRIMARY KEY,
       college_id TEXT NOT NULL,
       name TEXT NOT NULL,
@@ -406,6 +408,7 @@ class Database {
     )`);
 
     console.log('Multi-tenant SaaS database schema initialized successfully');
+    return true;
   }
 
   // Helper method to run queries with promises

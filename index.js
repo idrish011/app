@@ -59,12 +59,13 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGIN
 // Initialize database
 const db = new Database();
 const security = new SecurityMiddleware();
-
-// --- Super Admin Auto-Creation Logic ---
 const AuthMiddleware = require('./middleware/auth');
 const auth = new AuthMiddleware();
-(async function ensureSuperAdmin() {
+
+(async function startup() {
   try {
+    await db.initializeTables();
+    // --- Super Admin Auto-Creation Logic ---
     const existingAdmin = await db.get('SELECT id FROM users WHERE email = ?', ['admin@campuslink.com']);
     if (!existingAdmin) {
       const userId = require('uuid').v4();
@@ -82,7 +83,7 @@ const auth = new AuthMiddleware();
       console.log('Default super admin already exists');
     }
   } catch (error) {
-    console.error('Error ensuring super admin:', error);
+    console.error('Error during startup:', error);
   }
 })();
 
