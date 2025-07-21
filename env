@@ -10,7 +10,7 @@ JWT_SECRET=your-super-secure-jwt-secret-key-change-this-immediately
 JWT_EXPIRES_IN=24h
 
 # CORS Configuration - Restrict to your actual domains
-ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+ALLOWED_ORIGINS=https://fullapp-ijlz.onrender.com,https://yourdomain.com,https://www.yourdomain.com
 
 # Database Configuration
 DB_PATH=./campuslink.db
