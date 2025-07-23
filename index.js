@@ -392,32 +392,34 @@ if (process.argv.includes('--hash-admin-password')) {
   });
 }
 
-// Start server
-app.listen(PORT, async () => {
-  console.log(`🚀 CampusLink API server running on port ${PORT}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔒 Security: ${isProduction ? 'Production mode' : 'Development mode'}`);
-  if (isProduction) {
-    console.log('✅ Rate limiting enabled');
-    console.log('✅ Security headers enabled');
-    console.log('✅ Input validation enabled');
-  }
-  try {
-    // Test Neon/Postgres DB connection
-    await db.pool.query('SELECT 1');
-    console.log('🟢 Neon/Postgres DB connection is ready');
-  } catch (err) {
-    console.error('🔴 Neon/Postgres DB connection failed:', err.message);
-  }
+// Only start the server if not running the hash utility
+if (!process.argv.includes('--hash-admin-password')) {
+  app.listen(PORT, async () => {
+    console.log(`🚀 CampusLink API server running on port ${PORT}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔒 Security: ${isProduction ? 'Production mode' : 'Development mode'}`);
+    if (isProduction) {
+      console.log('✅ Rate limiting enabled');
+      console.log('✅ Security headers enabled');
+      console.log('✅ Input validation enabled');
+    }
+    try {
+      // Test Neon/Postgres DB connection
+      await db.pool.query('SELECT 1');
+      console.log('🟢 Neon/Postgres DB connection is ready');
+    } catch (err) {
+      console.error('🔴 Neon/Postgres DB connection failed:', err.message);
+    }
 
-  // Prevent server sleep: ping /api/health every 10 minutes
-  setInterval(() => {
-    const http = require('http');
-    const url = `http://localhost:${PORT}/api/health`;
-    http.get(url, (res) => {
-      console.log(`[KeepAlive] Pinged /api/health - Status: ${res.statusCode}`);
-    }).on('error', (err) => {
-      console.error('[KeepAlive] Error pinging /api/health:', err.message);
-    });
-  }, 10 * 60 * 1000); // 10 minutes
-});
+    // Prevent server sleep: ping /api/health every 10 minutes
+    setInterval(() => {
+      const http = require('http');
+      const url = `http://localhost:${PORT}/api/health`;
+      http.get(url, (res) => {
+        console.log(`[KeepAlive] Pinged /api/health - Status: ${res.statusCode}`);
+      }).on('error', (err) => {
+        console.error('[KeepAlive] Error pinging /api/health:', err.message);
+      });
+    }, 10 * 60 * 1000); // 10 minutes
+  });
+}
