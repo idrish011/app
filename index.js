@@ -379,6 +379,19 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
+// Utility: Generate password hash for manual admin creation
+if (process.argv.includes('--hash-admin-password')) {
+  const password = process.argv[process.argv.indexOf('--hash-admin-password') + 1];
+  if (!password) {
+    console.error('Usage: node index.js --hash-admin-password <password>');
+    process.exit(1);
+  }
+  bcrypt.hash(password, 12).then(hash => {
+    console.log(`Password hash for "${password}":\n${hash}`);
+    process.exit(0);
+  });
+}
+
 // Start server
 app.listen(PORT, async () => {
   console.log(`🚀 CampusLink API server running on port ${PORT}`);
@@ -396,4 +409,15 @@ app.listen(PORT, async () => {
   } catch (err) {
     console.error('🔴 Neon/Postgres DB connection failed:', err.message);
   }
+
+  // Prevent server sleep: ping /api/health every 10 minutes
+  setInterval(() => {
+    const http = require('http');
+    const url = `http://localhost:${PORT}/api/health`;
+    http.get(url, (res) => {
+      console.log(`[KeepAlive] Pinged /api/health - Status: ${res.statusCode}`);
+    }).on('error', (err) => {
+      console.error('[KeepAlive] Error pinging /api/health:', err.message);
+    });
+  }, 10 * 60 * 1000); // 10 minutes
 });
