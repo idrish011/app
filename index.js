@@ -64,7 +64,17 @@ const auth = new AuthMiddleware();
 
 (async function startup() {
   try {
+    // Ensure all tables are created before any queries
     await db.initializeTables();
+
+    // Wait for tables to be ready before checking/creating super admin
+    const usersTable = await db.get(
+      `SELECT to_regclass('public.users') as exists`
+    );
+    if (!usersTable || !usersTable.exists) {
+      throw new Error('Users table was not created. Check your database connection and schema.');
+    }
+
     // --- Super Admin Auto-Creation Logic ---
     const existingAdmin = await db.get('SELECT id FROM users WHERE email = $1', ['admin@campuslink.com']);
     if (!existingAdmin) {
@@ -97,6 +107,7 @@ const auth = new AuthMiddleware();
     }
   } catch (error) {
     console.error('Error during startup:', error);
+    process.exit(1); // Exit if tables are not created or admin cannot be created
   }
 })();
 
