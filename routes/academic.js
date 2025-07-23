@@ -368,7 +368,7 @@ router.post('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher
         id, class_id, title, description, due_date, total_marks, 
         weightage, assignment_type, document_path, created_by, 
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
     `, [assignmentId, class_id, title, description, due_date, total_marks, 
          weightage || 0, assignment_type || 'assignment', documentPath, req.user.id]);
 
@@ -466,7 +466,7 @@ router.post('/assignments/:assignmentId/submit',
         INSERT INTO student_assignments (
           id, assignment_id, student_id, submitted_at, 
           document_path, remarks, status
-        ) VALUES (?, ?, ?, datetime('now'), ?, ?, ?)
+        ) VALUES ($1, $2, $3, NOW(), $4, $5, $6)
       `, [submissionId, assignmentId, studentId, documentPath, remarks, status]);
 
       // Get the created submission
@@ -687,7 +687,7 @@ router.put('/assignments/:assignmentId', auth.authenticateToken, auth.authorizeR
       UPDATE assignments SET
         title = ?, description = ?, due_date = ?, total_marks = ?,
         weightage = ?, assignment_type = ?, document_path = ?, status = ?,
-        updated_at = datetime('now')
+        updated_at = NOW()
       WHERE id = ?
     `, [title, description, due_date, total_marks, weightage, 
          assignment_type, documentPath, status, assignmentId]);
@@ -755,7 +755,7 @@ router.put('/assignments/:assignmentId/grade/:studentId', auth.authenticateToken
 
     await db.run(`
       UPDATE student_assignments SET
-        marks_obtained = ?, feedback = ?, grade = ?, graded_at = datetime('now')
+        marks_obtained = ?, feedback = ?, grade = ?, graded_at = NOW()
       WHERE assignment_id = ? AND student_id = ?
     `, [marks_obtained, feedback, grade, assignmentId, studentId]);
 
@@ -2028,7 +2028,7 @@ router.post('/classes/:classId/attendance', auth.authenticateToken, auth.authori
           await db.run(`
             INSERT INTO attendance (
               id, class_id, student_id, date, status, remarks, marked_by, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
           `, [
             uuidv4(),
             classId,
@@ -2206,7 +2206,7 @@ router.post('/academic-years', auth.authenticateToken, auth.authorizeRoles('coll
       return res.status(400).json({ error: 'Missing required fields', message: 'Name, start_date, and end_date are required' });
     }
     const id = uuidv4();
-    await db.run(`INSERT INTO academic_years (id, college_id, name, start_date, end_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`, [id, collegeId, name, start_date, end_date, status || 'active']);
+    await db.run(`INSERT INTO academic_years (id, college_id, name, start_date, end_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())`, [id, collegeId, name, start_date, end_date, status || 'active']);
     const year = await db.get('SELECT * FROM academic_years WHERE id = ?', [id]);
     res.status(201).json({ message: 'Academic year created', year });
   } catch (error) {
@@ -2271,7 +2271,7 @@ router.post('/semesters', auth.authenticateToken, auth.authorizeRoles('college_a
       return res.status(404).json({ error: 'Academic year not found', message: 'Academic year does not exist in this college' });
     }
     const id = uuidv4();
-    await db.run(`INSERT INTO semesters (id, academic_year_id, name, start_date, end_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`, [id, academic_year_id, name, start_date, end_date, status || 'active']);
+    await db.run(`INSERT INTO semesters (id, academic_year_id, name, start_date, end_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())`, [id, academic_year_id, name, start_date, end_date, status || 'active']);
     const semester = await db.get('SELECT * FROM semesters WHERE id = ?', [id]);
     res.status(201).json({ message: 'Semester created', semester });
   } catch (error) {
@@ -2341,7 +2341,7 @@ router.post('/classes/:classId/enroll-students', auth.authenticateToken, auth.au
       // Verify student belongs to this college
       const student = await db.get('SELECT id FROM users WHERE id = ? AND college_id = ? AND role = "student"', [student_id, collegeId]);
       if (student) {
-        await db.run('INSERT OR IGNORE INTO class_enrollments (id, class_id, student_id, enrollment_date, status, created_at) VALUES (?, ?, ?, date("now"), "enrolled", datetime("now"))', [uuidv4(), classId, student_id]);
+        await db.run('INSERT OR IGNORE INTO class_enrollments (id, class_id, student_id, enrollment_date, status, created_at) VALUES (?, ?, ?, NOW(), "enrolled", NOW())', [uuidv4(), classId, student_id]);
         enrolled++;
       }
     }
@@ -2511,7 +2511,7 @@ router.post('/submissions/:id/grade', auth.authenticateToken, auth.authorizeRole
     // Update submission
     await db.run(`
       UPDATE assignment_submissions 
-      SET grade_percentage = ?, feedback = ?, status = ?, graded_at = CURRENT_TIMESTAMP
+      SET grade_percentage = ?, feedback = ?, status = ?, graded_at = NOW()
       WHERE id = ?
     `, [grade_percentage, feedback, status, id]);
     
@@ -2665,4 +2665,4 @@ router.post('/admission-inquiries', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

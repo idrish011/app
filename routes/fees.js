@@ -239,7 +239,7 @@ router.post('/collections',
           remarks, collected_by
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [collectionId, collegeId, student_id, fee_structure_id, amount_paid, 
-           payment_date, payment_method, transaction_id, receipt_number, 
+           payment_date, payment_method, transaction_id, receiptNumber, 
            remarks, req.user.id]);
 
       const collection = await db.get(`
@@ -509,27 +509,27 @@ router.get('/reports/collections',
       }
 
       if (start_date) {
-        query += ' AND fc.payment_date >= ?';
+        query += ' AND fc.payment_date >= $' + (params.length + 1);
         params.push(start_date);
       }
 
       if (end_date) {
-        query += ' AND fc.payment_date <= ?';
+        query += ' AND fc.payment_date <= $' + (params.length + 1);
         params.push(end_date);
       }
 
       if (course_id) {
-        query += ' AND fs.course_id = ?';
+        query += ' AND fs.course_id = $' + (params.length + 1);
         params.push(course_id);
       }
 
       if (payment_method) {
-        query += ' AND fc.payment_method = ?';
+        query += ' AND fc.payment_method = $' + (params.length + 1);
         params.push(payment_method);
       }
 
       if (group_by === 'date') {
-        query += ' GROUP BY DATE(fc.payment_date) ORDER BY date DESC';
+        query += ' GROUP BY DATE(fc.payment_date) ORDER BY DATE(fc.payment_date) DESC';
       } else if (group_by === 'course') {
         query += ' GROUP BY c.id ORDER BY total_amount DESC';
       } else if (group_by === 'payment_method') {
@@ -621,4 +621,4 @@ router.get('/reports/outstanding',
   }
 );
 
-module.exports = router; 
+module.exports = router;

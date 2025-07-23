@@ -21,9 +21,9 @@ async function isHoliday(date, collegeId) {
   try {
     const holiday = await db.get(`
       SELECT id FROM events 
-      WHERE college_id = ? 
+      WHERE college_id = $1 
       AND event_type = 'holiday' 
-      AND event_date = ? 
+      AND event_date = $2 
       AND status = 'active'
     `, [collegeId, date]);
     
@@ -76,14 +76,14 @@ async function getHolidays(collegeId, startDate = null, endDate = null) {
     let query = `
       SELECT id, title, event_date, description
       FROM events 
-      WHERE college_id = ? 
+      WHERE college_id = $1 
       AND event_type = 'holiday' 
       AND status = 'active'
     `;
     const params = [collegeId];
 
     if (startDate && endDate) {
-      query += ' AND event_date BETWEEN ? AND ?';
+      query += ' AND event_date BETWEEN $2 AND $3';
       params.push(startDate, endDate);
     }
 
@@ -110,7 +110,7 @@ async function getAttendanceCalendarWithHolidays(classId, month, year) {
     const classInfo = await db.get(`
       SELECT cl.college_id, cl.name as class_name
       FROM classes cl
-      WHERE cl.id = ?
+      WHERE cl.id = $1
     `, [classId]);
 
     if (!classInfo) {
@@ -130,18 +130,18 @@ async function getAttendanceCalendarWithHolidays(classId, month, year) {
         a.status,
         COUNT(a.id) as student_count
       FROM attendance a
-      WHERE a.class_id = ? 
-        AND strftime('%m', a.date) = ? 
-        AND strftime('%Y', a.date) = ?
+      WHERE a.class_id = $1 
+        AND EXTRACT(MONTH FROM a.date) = $2 
+        AND EXTRACT(YEAR FROM a.date) = $3
       GROUP BY a.date, a.status
       ORDER BY a.date
-    `, [classId, month.toString().padStart(2, '0'), year.toString()]);
+    `, [classId, parseInt(month), parseInt(year)]);
 
     // Get total students in class
     const totalStudents = await db.get(`
       SELECT COUNT(*) as count
       FROM class_enrollments ce
-      WHERE ce.class_id = ? AND ce.status = 'enrolled'
+      WHERE ce.class_id = $1 AND ce.status = 'enrolled'
     `, [classId]);
 
     return {
@@ -165,4 +165,4 @@ module.exports = {
   isAttendanceAllowed,
   getHolidays,
   getAttendanceCalendarWithHolidays
-}; 
+};

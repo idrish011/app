@@ -56,7 +56,7 @@ router.get('/courses', auth.authenticateToken, async (req, res) => {
     const { college_id } = req.user;
     const courses = await db.all(`
       SELECT * FROM courses
-      WHERE college_id = ?
+      WHERE college_id = $1
       ORDER BY name
     `, [college_id]);
 
@@ -206,7 +206,7 @@ router.get('/classes', auth.authenticateToken, async (req, res) => {
       JOIN courses c ON cl.course_id = c.id
       JOIN semesters s ON cl.semester_id = s.id
       JOIN users u ON cl.teacher_id = u.id
-      WHERE cl.college_id = ?
+      WHERE cl.college_id = $1
       ORDER BY cl.name
     `, [college_id]);
 
@@ -334,7 +334,7 @@ router.get('/assignments', auth.authenticateToken, async (req, res) => {
       FROM assignments a
       JOIN classes cl ON a.class_id = cl.id
       JOIN courses c ON cl.course_id = c.id
-      WHERE cl.teacher_id = ? AND cl.college_id = ? AND a.status != 'deleted'
+      WHERE cl.teacher_id = $1 AND cl.college_id = $2 AND a.status != 'deleted'
       ORDER BY a.due_date ASC
     `, [teacher_id, college_id]);
 
@@ -783,4 +783,4 @@ router.delete('/fee-structures/:id', auth.authenticateToken, async (req, res) =>
   }
 });
 
-module.exports = router; 
+module.exports = router;

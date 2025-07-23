@@ -75,7 +75,7 @@ router.get('/contact-messages', auth.authenticateToken, auth.authorizeRoles('col
     params.push(limit, offset);
 
     const messages = await db.all(query, params);
-    const total = await db.get('SELECT COUNT(*) as count FROM contact_messages WHERE college_id = ?', [collegeId]);
+    const total = await db.get('SELECT COUNT(*) as count FROM contact_messages WHERE college_id = $1', [collegeId]);
 
     res.json({
       success: true,
@@ -189,7 +189,7 @@ router.get('/ratings', auth.authenticateToken, auth.authorizeRoles('college_admi
     `, [collegeId, limit, offset]);
 
     const total = await db.get('SELECT COUNT(*) as count FROM app_ratings WHERE college_id = ?', [collegeId]);
-    const average = await db.get('SELECT AVG(rating) as avg_rating FROM app_ratings WHERE college_id = ?', [collegeId]);
+    const average = await db.get('SELECT AVG(rating) as avg_rating FROM app_ratings WHERE college_id = $1', [collegeId]);
 
     res.json({
       success: true,
@@ -222,12 +222,12 @@ router.get('/stats', auth.authenticateToken, async (req, res) => {
     // Only college admins and admins can see app stats
     if (role === 'college_admin' || role === 'super_admin') {
       const contactMessages = await db.get(
-        'SELECT COUNT(*) as count FROM contact_messages WHERE college_id = ? AND status = "unread"',
-        [collegeId]
+        'SELECT COUNT(*) as count FROM contact_messages WHERE college_id = $1 AND status = $2',
+        [collegeId, 'unread']
       );
 
       const ratings = await db.get(
-        'SELECT COUNT(*) as count, AVG(rating) as avg_rating FROM app_ratings WHERE college_id = ?',
+        'SELECT COUNT(*) as count, AVG(rating) as avg_rating FROM app_ratings WHERE college_id = $1',
         [collegeId]
       );
 
@@ -299,4 +299,4 @@ router.post('/feedback', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

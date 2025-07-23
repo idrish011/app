@@ -64,7 +64,7 @@ router.get('/courses', auth.authenticateToken, async (req, res) => {
           SELECT c.*, u.first_name, u.last_name
           FROM courses c
           LEFT JOIN users u ON c.college_id = u.college_id AND u.role = 'college_admin'
-          WHERE c.college_id = ? AND c.status = 'active'
+          WHERE c.college_id = $1 AND c.status = 'active'
           ORDER BY c.created_at DESC
         `, [user.college_id]);
         break;
@@ -73,7 +73,7 @@ router.get('/courses', auth.authenticateToken, async (req, res) => {
           SELECT c.*
           FROM courses c
           JOIN classes cl ON c.id = cl.course_id
-          WHERE cl.teacher_id = ? AND c.status = 'active'
+          WHERE cl.teacher_id = $1 AND c.status = 'active'
           GROUP BY c.id
           ORDER BY c.created_at DESC
         `, [user.id]);
@@ -85,7 +85,7 @@ router.get('/courses', auth.authenticateToken, async (req, res) => {
           JOIN classes cl ON c.id = cl.course_id
           JOIN class_enrollments ce ON cl.id = ce.class_id
           JOIN users u ON cl.teacher_id = u.id
-          WHERE ce.student_id = ? AND c.status = 'active'
+          WHERE ce.student_id = $1 AND c.status = 'active'
           ORDER BY c.created_at DESC
         `, [user.id]);
         break;
@@ -739,4 +739,4 @@ router.put('/teacher/notifications/:id/read', auth.authenticateToken, auth.autho
   }
 });
 
-module.exports = router; 
+module.exports = router;

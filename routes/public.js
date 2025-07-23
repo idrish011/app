@@ -99,7 +99,7 @@ router.post('/admission-inquiry', async (req, res) => {
     // Check if college exists and is available on landing page
     const college = await db.get(`
       SELECT id FROM colleges 
-      WHERE id = ? AND show_on_landing = 1
+      WHERE id = $1 AND show_on_landing = TRUE
     `, [college_id]);
 
     if (!college) {
@@ -167,4 +167,4 @@ router.get('/colleges/:collegeId/contact', async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;

@@ -53,7 +53,7 @@ router.post('/student-fees', auth.authenticateToken, auth.authorizeRoles('colleg
     }
     // Check for existing assignment
     const exists = await db.get(
-      'SELECT id FROM student_fee_status WHERE student_id = ? AND fee_structure_id = ?',
+      'SELECT id FROM student_fee_status WHERE student_id = $1 AND fee_structure_id = $2',
       [student_id, fee_structure_id]
     );
     if (exists) {
@@ -61,7 +61,7 @@ router.post('/student-fees', auth.authenticateToken, auth.authorizeRoles('colleg
     }
     const id = uuidv4();
     await db.run(
-      `INSERT INTO student_fee_status (id, college_id, student_id, fee_structure_id, due_date, total_amount, amount_paid, status, remarks) VALUES (?, ?, ?, ?, ?, ?, 0, 'due', ?)`,
+      `INSERT INTO student_fee_status (id, college_id, student_id, fee_structure_id, due_date, total_amount, amount_paid, status, remarks) VALUES ($1, $2, $3, $4, $5, $6, 0, 'due', $7)`,
       [id, collegeId, student_id, fee_structure_id, due_date, total_amount, remarks || null]
     );
     const record = await db.get('SELECT * FROM student_fee_status WHERE id = ?', [id]);
@@ -167,4 +167,4 @@ router.get('/student-fees/summary', auth.authenticateToken, auth.authorizeRoles(
   }
 });
 
-module.exports = router; 
+module.exports = router;

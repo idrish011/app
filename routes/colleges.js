@@ -78,11 +78,11 @@ router.get('/',
 
       const params = [];
       if (search) {
-        query += ` WHERE c.name LIKE ? OR c.domain LIKE ?`;
+        query += ` WHERE c.name ILIKE $1 OR c.domain ILIKE $2`;
         params.push(`%${search}%`, `%${search}%`);
       }
 
-      query += ` GROUP BY c.id ORDER BY c.created_at DESC LIMIT ? OFFSET ?`;
+      query += ` GROUP BY c.id ORDER BY c.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
       params.push(parseInt(limit), offset);
 
       const colleges = await db.all(query, params);
@@ -90,7 +90,7 @@ router.get('/',
       // Get total count
       let countQuery = 'SELECT COUNT(*) as total FROM colleges';
       if (search) {
-        countQuery += ' WHERE name LIKE ? OR domain LIKE ?';
+        countQuery += ' WHERE name ILIKE $1 OR domain ILIKE $2';
       }
       const countResult = await db.get(countQuery, search ? [`%${search}%`, `%${search}%`] : []);
 
@@ -480,4 +480,4 @@ router.patch('/:collegeId/landing',
   }
 );
 
-module.exports = router; 
+module.exports = router;

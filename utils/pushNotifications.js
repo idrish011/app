@@ -405,7 +405,7 @@ class PushNotificationService {
       // Get parents with push tokens using parameterized query
       const parents = await this.db.all(`
         SELECT id, push_token FROM users 
-        WHERE college_id = ? AND role = 'parent' AND push_token IS NOT NULL
+        WHERE college_id = $1 AND role = 'parent' AND push_token IS NOT NULL
       `, [collegeId]);
 
       if (parents.length === 0) {
@@ -505,4 +505,4 @@ class PushNotificationService {
   }
 }
 
-module.exports = new PushNotificationService(); 
+module.exports = new PushNotificationService();
