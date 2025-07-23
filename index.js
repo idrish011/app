@@ -68,15 +68,28 @@ const auth = new AuthMiddleware();
     // --- Super Admin Auto-Creation Logic ---
     const existingAdmin = await db.get('SELECT id FROM users WHERE email = $1', ['admin@campuslink.com']);
     if (!existingAdmin) {
-      const userId = require('uuid').v4();
+      const userId = uuidv4();
       const passwordHash = await auth.hashPassword('admin123');
       await db.run(
         `INSERT INTO users (
           id, college_id, username, email, password_hash, first_name, last_name, 
-          role, phone, date_of_birth, gender, address
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-        [userId, null, 'admin', 'admin@campuslink.com', passwordHash, 'Super', 'Admin', 
-         'super_admin', null, null, null, null]
+          role, phone, date_of_birth, gender, address, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        [
+          userId,
+          null,
+          'admin',
+          'admin@campuslink.com',
+          passwordHash,
+          'Super',
+          'Admin',
+          'super_admin',
+          null,
+          null,
+          null,
+          null,
+          'active'
+        ]
       );
       console.log('Default super admin created: admin@campuslink.com / admin123');
     } else {
@@ -356,7 +369,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 CampusLink API server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔒 Security: ${isProduction ? 'Production mode' : 'Development mode'}`);
@@ -364,5 +377,12 @@ app.listen(PORT, () => {
     console.log('✅ Rate limiting enabled');
     console.log('✅ Security headers enabled');
     console.log('✅ Input validation enabled');
+  }
+  try {
+    // Test Neon/Postgres DB connection
+    await db.pool.query('SELECT 1');
+    console.log('🟢 Neon/Postgres DB connection is ready');
+  } catch (err) {
+    console.error('🔴 Neon/Postgres DB connection failed:', err.message);
   }
 });
