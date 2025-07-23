@@ -195,7 +195,7 @@ if (isProduction) {
   const speedLimiter = slowDown({
     windowMs: 15 * 60 * 1000, // 15 minutes
     delayAfter: 50, // allow 50 requests per 15 minutes, then...
-    delayMs: 500, // begin adding 500ms of delay per request above 50
+    delayMs: () => 500, // v2: must be a function returning ms
     maxDelayMs: 20000 // maximum delay of 20 seconds
   });
   app.use(speedLimiter);
@@ -395,6 +395,7 @@ if (process.argv.includes('--hash-admin-password')) {
 // Only start the server if not running the hash utility
 if (!process.argv.includes('--hash-admin-password')) {
   app.listen(PORT, async () => {
+    
     console.log(`🚀 CampusLink API server running on port ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔒 Security: ${isProduction ? 'Production mode' : 'Development mode'}`);
@@ -403,13 +404,7 @@ if (!process.argv.includes('--hash-admin-password')) {
       console.log('✅ Security headers enabled');
       console.log('✅ Input validation enabled');
     }
-    try {
-      // Test Neon/Postgres DB connection
-      await db.pool.query('SELECT 1');
-      console.log('🟢 Neon/Postgres DB connection is ready');
-    } catch (err) {
-      console.error('🔴 Neon/Postgres DB connection failed:', err.message);
-    }
+   
 
     // Prevent server sleep: ping /api/health every 10 minutes
     setInterval(() => {
