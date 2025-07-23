@@ -66,7 +66,7 @@ const auth = new AuthMiddleware();
   try {
     await db.initializeTables();
     // --- Super Admin Auto-Creation Logic ---
-    const existingAdmin = await db.get('SELECT id FROM users WHERE email = ?', ['admin@campuslink.com']);
+    const existingAdmin = await db.get('SELECT id FROM users WHERE email = $1', ['admin@campuslink.com']);
     if (!existingAdmin) {
       const userId = require('uuid').v4();
       const passwordHash = await auth.hashPassword('admin123');
@@ -74,7 +74,7 @@ const auth = new AuthMiddleware();
         `INSERT INTO users (
           id, college_id, username, email, password_hash, first_name, last_name, 
           role, phone, date_of_birth, gender, address
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
         [userId, null, 'admin', 'admin@campuslink.com', passwordHash, 'Super', 'Admin', 
          'super_admin', null, null, null, null]
       );
@@ -365,4 +365,4 @@ app.listen(PORT, () => {
     console.log('✅ Security headers enabled');
     console.log('✅ Input validation enabled');
   }
-}); 
+});
