@@ -1,5 +1,6 @@
 const express = require('express');
 const AuthMiddleware = require('../middleware/auth');
+const { v4: uuidv4 } = require('uuid');
 const Database = require('../models/database');
 const { loggers } = require('../middleware/activityLogger');
 
@@ -102,46 +103,50 @@ router.get('/dashboard/stats', auth.authenticateToken, loggers.dashboardAccess, 
 // Get all users
 router.get('/users', auth.authenticateToken, auth.authorizeRoles('super_admin', 'college_admin'), loggers.dashboardAccess, async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', role = '', college_id = '' } = req.query;
-    const offset = (page - 1) * limit;
+    const { page = 1, limit = 10, search = '', role = '', college_id: query_college_id = '' } = req.query;
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const offset = (pageNum - 1) * limitNum;
 
-    let whereClause = 'WHERE 1=1';
+    const whereConditions = [];
     const params = [];
+    let paramIndex = 1;
 
     // For college_admin, restrict to their own college
     if (req.user.role === 'college_admin') {
-      whereClause += ' AND u.college_id = ?';
+      whereConditions.push(`u.college_id = $${paramIndex++}`);
       params.push(req.user.college_id);
       
       // College admins can only see students, teachers, and parents
-      whereClause += ' AND u.role IN ("student", "teacher", "parent")';
+      whereConditions.push(`u.role IN ('student', 'teacher', 'parent')`);
     }
 
     if (search) {
-      whereClause += ' AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ?)';
+      whereConditions.push(`(u.first_name ILIKE $${paramIndex++} OR u.last_name ILIKE $${paramIndex++} OR u.email ILIKE $${paramIndex++})`);
       const searchTerm = `%${search}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
 
     if (role) {
-      whereClause += ' AND u.role = ?';
+      whereConditions.push(`u.role = $${paramIndex++}`);
       params.push(role);
     }
 
-    if (college_id && req.user.role === 'super_admin') {
-      whereClause += ' AND u.college_id = ?';
-      params.push(college_id);
+    if (query_college_id && req.user.role === 'super_admin') {
+      whereConditions.push(`u.college_id = $${paramIndex++}`);
+      params.push(query_college_id);
     }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
     // Get total count
     const countQuery = `
       SELECT COUNT(*) as total 
       FROM users u 
-      LEFT JOIN colleges c ON u.college_id = c.id 
       ${whereClause}
     `;
     const totalResult = await db.get(countQuery, params);
-    const total = totalResult.total;
+    const total = totalResult ? parseInt(totalResult.total, 10) : 0;
 
     // Get users with pagination
     const usersQuery = `
@@ -150,9 +155,9 @@ router.get('/users', auth.authenticateToken, auth.authorizeRoles('super_admin', 
       LEFT JOIN colleges c ON u.college_id = c.id 
       ${whereClause}
       ORDER BY u.created_at DESC 
-      LIMIT ? OFFSET ?
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `;
-    const users = await db.all(usersQuery, [...params, limit, offset]);
+    const users = await db.all(usersQuery, [...params, limitNum, offset]);
 
     // Remove sensitive information
     users.forEach(user => {
@@ -168,10 +173,10 @@ router.get('/users', auth.authenticateToken, auth.authorizeRoles('super_admin', 
     res.json({
       users,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limitNum)
       }
     });
   } catch (error) {
@@ -193,7 +198,7 @@ router.get('/users/:userId', auth.authenticateToken, auth.authorizeRoles('super_
       SELECT u.*, c.name as college_name, c.domain as college_domain
       FROM users u 
       LEFT JOIN colleges c ON u.college_id = c.id 
-      WHERE u.id = ?
+      WHERE u.id = $1
     `, [userId]);
 
     if (!user) {
@@ -277,15 +282,23 @@ router.post('/users', auth.authenticateToken, auth.authorizeRoles('super_admin',
       finalCollegeId = (role === 'super_admin') ? null : college_id;
     }
 
-    // Check if user already exists
-    const existingUser = await db.get(
-      'SELECT id FROM users WHERE email = ?',
-      [email]
-    );
+    // Check if user already exists in the same scope (college or global for super_admin)
+    let existingUserQuery = 'SELECT id FROM users WHERE email = $1';
+    const existingUserParams = [email];
+
+    if (finalCollegeId) {
+      existingUserQuery += ' AND college_id = $2';
+      existingUserParams.push(finalCollegeId);
+    } else {
+      // This handles the case for super_admins where college_id is NULL
+      existingUserQuery += ' AND college_id IS NULL';
+    }
+
+    const existingUser = await db.get(existingUserQuery, existingUserParams);
 
     if (existingUser) {
       return res.status(409).json({
-        error: 'User already exists',
+        error: 'User already exists in this college',
         message: 'A user with this email already exists'
       });
     }
@@ -294,19 +307,19 @@ router.post('/users', auth.authenticateToken, auth.authorizeRoles('super_admin',
     const passwordHash = await auth.hashPassword(password);
 
     // Insert new user
-    const userId = require('uuid').v4();
+    const userId = uuidv4();
     
     await db.run(
       `INSERT INTO users (
         id, college_id, username, email, password_hash, first_name, last_name, 
         role, phone, date_of_birth, gender, address
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       [userId, finalCollegeId, username, email, passwordHash, first_name, last_name, 
        role, phone, date_of_birth, gender, address]
     );
 
     // Get created user
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+    const user = await db.get('SELECT * FROM users WHERE id = $1', [userId]);
     delete user.password_hash;
 
     res.status(201).json({
@@ -326,22 +339,10 @@ router.post('/users', auth.authenticateToken, auth.authorizeRoles('super_admin',
 router.put('/users/:userId', auth.authenticateToken, auth.authorizeRoles('super_admin', 'college_admin'), loggers.updateUser, async (req, res) => {
   try {
     const { userId } = req.params;
-    const {
-      username,
-      email,
-      first_name,
-      last_name,
-      role,
-      college_id,
-      phone,
-      date_of_birth,
-      gender,
-      address,
-      status
-    } = req.body;
+    const updates = req.body;
 
     // Check if user exists
-    const existingUser = await db.get('SELECT id, college_id FROM users WHERE id = ?', [userId]);
+    const existingUser = await db.get('SELECT * FROM users WHERE id = $1', [userId]);
     if (!existingUser) {
       return res.status(404).json({
         error: 'User not found',
@@ -358,35 +359,93 @@ router.put('/users/:userId', auth.authenticateToken, auth.authorizeRoles('super_
         });
       }
       
-      // College admins can only update students, teachers, and parents
-      if (!['student', 'teacher', 'parent'].includes(role)) {
+      // College admins can only update certain roles
+      const allowedRolesToUpdate = ['student', 'teacher', 'parent'];
+      if (!allowedRolesToUpdate.includes(existingUser.role)) {
         return res.status(403).json({
           error: 'Insufficient permissions',
-          message: 'College admins can only update students, teachers, and parents'
+          message: `College admins can only update ${allowedRolesToUpdate.join(', ')}.`
+        });
+      }
+      // And they cannot change a user's role to something they can't manage
+      if (updates.role && !allowedRolesToUpdate.includes(updates.role)) {
+        return res.status(403).json({
+          error: 'Insufficient permissions',
+          message: `Cannot change role to ${updates.role}.`
         });
       }
     }
 
-    // Update user
-    let finalCollegeId = college_id;
+    // Prepare dynamic update query
+    const updateFields = [];
+    const params = [];
+    let paramIndex = 1;
+
+    // Handle college_id separately based on role
+    let finalCollegeId = updates.college_id;
     if (req.user.role === 'college_admin') {
-      finalCollegeId = req.user.college_id;
+      finalCollegeId = req.user.college_id; // Force their own college_id
     } else if (req.user.role === 'super_admin') {
-      finalCollegeId = (role === 'super_admin') ? null : college_id;
+      // Super admin can change college_id, or set it to null for another super_admin
+      if (updates.role === 'super_admin') {
+        finalCollegeId = null;
+      }
     }
+
+    // Check for email uniqueness if it's being changed
+    if (updates.email && updates.email !== existingUser.email) {
+      let uniqueCheckQuery = 'SELECT id FROM users WHERE email = $1 AND id != $2';
+      const uniqueCheckParams = [updates.email, userId];
+      
+      const checkCollegeId = finalCollegeId !== undefined ? finalCollegeId : existingUser.college_id;
+      if (checkCollegeId) {
+        uniqueCheckQuery += ' AND college_id = $3';
+        uniqueCheckParams.push(checkCollegeId);
+      } else {
+        uniqueCheckQuery += ' AND college_id IS NULL';
+      }
+
+      const duplicateUser = await db.get(uniqueCheckQuery, uniqueCheckParams);
+      if (duplicateUser) {
+        return res.status(409).json({
+          error: 'Email already in use',
+          message: 'This email address is already taken by another user in this college.'
+        });
+      }
+    }
+
+    // Dynamically add other fields to update
+    const allowedUpdates = ['username', 'email', 'first_name', 'last_name', 'role', 'college_id', 'phone', 'date_of_birth', 'gender', 'address', 'status'];
+    allowedUpdates.forEach(field => {
+      if (updates[field] !== undefined && updates[field] !== existingUser[field]) {
+        // Use finalCollegeId if the field is college_id
+        const value = field === 'college_id' ? finalCollegeId : updates[field];
+        updateFields.push(`${field} = $${paramIndex++}`);
+        params.push(value);
+      }
+    });
+
+    if (updateFields.length === 0) {
+      const noChangeUser = await db.get('SELECT * FROM users WHERE id = $1', [userId]);
+      delete noChangeUser.password_hash;
+      return res.json({ message: 'No changes detected. User not updated.', user: noChangeUser });
+    }
+
+    // Add the WHERE clause parameter
+    params.push(userId);
+
+    // Construct and run the final query
+    const query = `
+      UPDATE users SET 
+        ${updateFields.join(', ')}, 
+        updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $${paramIndex}
+    `;
     
-    await db.run(
-      `UPDATE users SET 
-        username = ?, email = ?, first_name = ?, last_name = ?, 
-        role = ?, college_id = ?, phone = ?, date_of_birth = ?, 
-        gender = ?, address = ?, status = ?, updated_at = CURRENT_TIMESTAMP 
-        WHERE id = ?`,
-      [username, email, first_name, last_name, role, finalCollegeId, phone, 
-       date_of_birth, gender, address, status, userId]
-    );
+    await db.run(query, params);
 
     // Get updated user
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+    const user = await db.get('SELECT * FROM users WHERE id = $1', [userId]);
     delete user.password_hash;
 
     res.json({
@@ -408,7 +467,7 @@ router.delete('/users/:userId', auth.authenticateToken, auth.authorizeRoles('sup
     const { userId } = req.params;
 
     // Check if user exists
-    const existingUser = await db.get('SELECT id, college_id, role FROM users WHERE id = ?', [userId]);
+    const existingUser = await db.get('SELECT id, college_id, role FROM users WHERE id = $1', [userId]);
     if (!existingUser) {
       return res.status(404).json({
         error: 'User not found',
@@ -436,7 +495,7 @@ router.delete('/users/:userId', auth.authenticateToken, auth.authorizeRoles('sup
 
     // Soft delete - update status to 'deleted'
     await db.run(
-      'UPDATE users SET status = "deleted", updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      "UPDATE users SET status = 'deleted', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
       [userId]
     );
 
@@ -458,7 +517,7 @@ router.put('/change-password', auth.authenticateToken, auth.authorizeRoles('supe
     const { currentPassword, newPassword } = req.body;
 
     // Get current user
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    const user = await db.get('SELECT * FROM users WHERE id = $1', [req.user.id]);
     if (!user) {
       return res.status(404).json({
         error: 'User not found',
@@ -480,7 +539,7 @@ router.put('/change-password', auth.authenticateToken, auth.authorizeRoles('supe
 
     // Update password
     await db.run(
-      'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [newPasswordHash, req.user.id]
     );
 
@@ -503,7 +562,7 @@ router.put('/users/:userId/reset-password', auth.authenticateToken, auth.authori
     const { newPassword, sendEmail = true } = req.body;
 
     // Get user to reset
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+    const user = await db.get('SELECT * FROM users WHERE id = $1', [userId]);
     if (!user) {
       return res.status(404).json({
         error: 'User not found',
@@ -516,7 +575,7 @@ router.put('/users/:userId/reset-password', auth.authenticateToken, auth.authori
 
     // Update password
     await db.run(
-      'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [newPasswordHash, userId]
     );
 
