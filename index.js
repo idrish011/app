@@ -114,10 +114,17 @@ app.use(helmet({
 // CORS configuration with security
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
     if (!origin) return callback(null, true);
-    
-    if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+
+    // Normalize localhost origins for dev (handle port differences)
+    const normalizedOrigin = origin.replace(/\/\/localhost:\d+/, '//localhost');
+    const allowedOrigins = ALLOWED_ORIGINS.map(o => o.replace(/\/\/localhost:\d+/, '//localhost'));
+
+    if (
+      ALLOWED_ORIGINS.includes(origin) ||
+      allowedOrigins.includes(normalizedOrigin)
+    ) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -126,8 +133,12 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
-  exposedHeaders: ['X-Total-Count']
+  exposedHeaders: ['X-Total-Count'],
+  optionsSuccessStatus: 200 // <-- Add this line for legacy browsers support
 }));
+
+// Explicitly handle preflight OPTIONS requests for all routes (must be before routes)
+app.options('*', cors());
 
 // Rate limiting - ENABLED FOR PRODUCTION
 const isProduction = process.env.NODE_ENV === 'production';
@@ -312,6 +323,11 @@ app.use((err, req, res, next) => {
     ip: req.ip,
     userAgent: req.get('User-Agent')
   });
+
+  // Log full error for debugging
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('Full error object:', err);
+  }
 
   // Don't expose internal errors in production
   const errorMessage = isProduction ? 'Internal server error' : err.message;

@@ -8,8 +8,32 @@ const router = express.Router();
 const auth = new AuthMiddleware();
 const db = new Database();
 
+// Helper: retry a DB call up to N times with delay (for transient Neon/PG issues)
+async function retryDbCall(fn, retries = 3, delayMs = 500) {
+  let lastErr;
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      // If connection refused, do not retry, fail fast
+      if (
+        err.code === 'ECONNREFUSED' ||
+        (Array.isArray(err.errors) && err.errors.some(e => e.code === 'ECONNREFUSED'))
+      ) {
+        console.error('[DB] Connection refused. Check your DATABASE_URL and ensure your Postgres/Neon server is running and accessible.');
+        throw err;
+      }
+      lastErr = err;
+      if (i < retries - 1) {
+        await new Promise(res => setTimeout(res, delayMs));
+      }
+    }
+  }
+  throw lastErr;
+}
+
 // User registration
-router.post('/register', auth.validateRegistration, auth.checkValidationResult, loggers.createUser, async (req, res) => {
+router.post('/register', auth.validateRegistration, auth.checkValidationResult, async (req, res) => {
   try {
     const {
       username,
@@ -27,13 +51,9 @@ router.post('/register', auth.validateRegistration, auth.checkValidationResult, 
 
     // Handle super admin registration differently
     if (role === 'super_admin') {
-      // For super admin, we don't require college_id or check college existence
-      // Super admins manage the entire system
-      
       // Check if user already exists globally
-      const existingUser = await db.get(
-        'SELECT id FROM users WHERE email = ? AND role = "super_admin"',
-        [email]
+      const existingUser = await retryDbCall(() =>
+        db.get('SELECT id FROM users WHERE email = $1 AND role = $2', [email, 'super_admin'])
       );
 
       if (existingUser) {
@@ -48,17 +68,21 @@ router.post('/register', auth.validateRegistration, auth.checkValidationResult, 
       const userId = uuidv4();
 
       // Insert super admin user (college_id can be null or a system identifier)
-      await db.run(
-        `INSERT INTO users (
-          id, college_id, username, email, password_hash, first_name, last_name, 
-          role, phone, date_of_birth, gender, address
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [userId, 'system', username, email, passwordHash, first_name, last_name, 
-         role, phone, date_of_birth, gender, address]
+      await retryDbCall(() =>
+        db.run(
+          `INSERT INTO users (
+            id, college_id, username, email, password_hash, first_name, last_name, 
+            role, phone, date_of_birth, gender, address
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+          [userId, 'system', username, email, passwordHash, first_name, last_name, 
+           role, phone, date_of_birth, gender, address]
+        )
       );
 
       // Generate token
-      const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+      const user = await retryDbCall(() =>
+        db.get('SELECT * FROM users WHERE id = $1', [userId])
+      );
       const token = auth.generateToken(user);
 
       res.status(201).json({
@@ -84,7 +108,9 @@ router.post('/register', auth.validateRegistration, auth.checkValidationResult, 
       }
 
       // Check if college exists
-      const college = await db.get('SELECT id, subscription_status FROM colleges WHERE id = ?', [college_id]);
+      const college = await retryDbCall(() =>
+        db.get('SELECT id, subscription_status FROM colleges WHERE id = $1', [college_id])
+      );
       if (!college) {
         return res.status(404).json({
           error: 'College not found',
@@ -100,9 +126,8 @@ router.post('/register', auth.validateRegistration, auth.checkValidationResult, 
       }
 
       // Check if user already exists in this college
-      const existingUser = await db.get(
-        'SELECT id FROM users WHERE email = ? AND college_id = ?',
-        [email, college_id]
+      const existingUser = await retryDbCall(() =>
+        db.get('SELECT id FROM users WHERE email = $1 AND college_id = $2', [email, college_id])
       );
 
       if (existingUser) {
@@ -117,17 +142,21 @@ router.post('/register', auth.validateRegistration, auth.checkValidationResult, 
       const userId = uuidv4();
 
       // Insert new user
-      await db.run(
-        `INSERT INTO users (
-          id, college_id, username, email, password_hash, first_name, last_name, 
-          role, phone, date_of_birth, gender, address
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [userId, college_id, username, email, passwordHash, first_name, last_name, 
-         role, phone, date_of_birth, gender, address]
+      await retryDbCall(() =>
+        db.run(
+          `INSERT INTO users (
+            id, college_id, username, email, password_hash, first_name, last_name, 
+            role, phone, date_of_birth, gender, address
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+          [userId, college_id, username, email, passwordHash, first_name, last_name, 
+           role, phone, date_of_birth, gender, address]
+        )
       );
 
       // Generate token
-      const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+      const user = await retryDbCall(() =>
+        db.get('SELECT * FROM users WHERE id = $1', [userId])
+      );
       const token = auth.generateToken(user);
 
       res.status(201).json({
@@ -166,12 +195,14 @@ router.post('/forgot-password', async (req, res) => {
     }
 
     // Find user by email
-    const user = await db.get(`
-      SELECT u.*, c.name as college_name 
-      FROM users u 
-      LEFT JOIN colleges c ON u.college_id = c.id 
-      WHERE u.email = ? AND u.status = 'active'
-    `, [email]);
+    const user = await retryDbCall(() =>
+      db.get(`
+        SELECT u.*, c.name as college_name 
+        FROM users u 
+        LEFT JOIN colleges c ON u.college_id = c.id 
+        WHERE u.email = $1 AND u.status = 'active'
+      `, [email])
+    );
 
     if (!user) {
       // Don't reveal if user exists or not for security
@@ -185,9 +216,11 @@ router.post('/forgot-password', async (req, res) => {
     const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
     // Store reset token in database
-    await db.run(
-      'UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE id = ?',
-      [resetToken, resetTokenExpiry, user.id]
+    await retryDbCall(() =>
+      db.run(
+        'UPDATE users SET reset_token = $1, reset_token_expiry = $2 WHERE id = $3',
+        [resetToken, resetTokenExpiry, user.id]
+      )
     );
 
     // TODO: Send email with reset link
@@ -220,9 +253,11 @@ router.post('/reset-password', async (req, res) => {
     }
 
     // Find user with valid reset token
-    const user = await db.get(
-      'SELECT * FROM users WHERE reset_token = ? AND reset_token_expiry > CURRENT_TIMESTAMP AND status = "active"',
-      [token]
+    const user = await retryDbCall(() =>
+      db.get(
+        'SELECT * FROM users WHERE reset_token = $1 AND reset_token_expiry > CURRENT_TIMESTAMP AND status = $2',
+        [token, 'active']
+      )
     );
 
     if (!user) {
@@ -244,9 +279,11 @@ router.post('/reset-password', async (req, res) => {
     const newPasswordHash = await auth.hashPassword(newPassword);
 
     // Update password and clear reset token
-    await db.run(
-      'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expiry = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [newPasswordHash, user.id]
+    await retryDbCall(() =>
+      db.run(
+        'UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expiry = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        [newPasswordHash, user.id]
+      )
     );
 
     res.json({
@@ -262,28 +299,26 @@ router.post('/reset-password', async (req, res) => {
 });
 
 // User login
-router.post('/login', auth.validateLogin, auth.checkValidationResult, loggers.login, async (req, res) => {
+router.post('/login', auth.validateLogin, auth.checkValidationResult, async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Get user with college info (handle super admin case)
     let user;
-    
-    // First try to get user as super admin
-    user = await db.get(`
-      SELECT u.*, 'system' as college_name, 'active' as subscription_status
-      FROM users u 
-      WHERE u.email = ? AND u.role = 'super_admin' AND u.status = 'active'
-    `, [email]);
-    
-    // If not found as super admin, try as regular user
-    if (!user) {
-      user = await db.get(`
-        SELECT u.*, c.name as college_name, c.subscription_status 
+    user = await retryDbCall(() =>
+      db.get(`
+        SELECT u.*, 'system' as college_name, 'active' as subscription_status
         FROM users u 
-        JOIN colleges c ON u.college_id = c.id 
-        WHERE u.email = ? AND u.status = 'active'
-      `, [email]);
+        WHERE u.email = $1 AND u.role = $2 AND u.status = $3
+      `, [email, 'super_admin', 'active'])
+    );
+    if (!user) {
+      user = await retryDbCall(() =>
+        db.get(`
+          SELECT u.*, c.name as college_name, c.subscription_status 
+          FROM users u 
+          JOIN colleges c ON u.college_id = c.id 
+          WHERE u.email = $1 AND u.status = $2
+        `, [email, 'active'])
+      );
     }
 
     if (!user) {
@@ -342,17 +377,20 @@ router.put('/change-password', auth.authenticateToken, async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
     // Get current user
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    const user = await db.get('SELECT * FROM users WHERE id = $1', [req.user.id]);
     if (!user) {
+      console.log(`[Change Password] User not found: ${req.user.id}`);
       return res.status(404).json({
         error: 'User not found',
         message: 'User not found'
       });
     }
 
+    console.log(`[Change Password] password_hash for user ${req.user.id}: ${user.password_hash}`);
     // Verify current password
     const isValidPassword = await auth.comparePassword(currentPassword, user.password_hash);
     if (!isValidPassword) {
+      console.log(`[Change Password] Invalid current password for user ${req.user.id}`);
       return res.status(401).json({
         error: 'Invalid current password',
         message: 'Current password is incorrect'
@@ -364,9 +402,11 @@ router.put('/change-password', auth.authenticateToken, async (req, res) => {
 
     // Update password
     await db.run(
-      'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [newPasswordHash, req.user.id]
     );
+
+    console.log(`[Change Password] Password updated for user ${req.user.id}`);
 
     res.json({
       message: 'Password changed successfully'
@@ -375,7 +415,7 @@ router.put('/change-password', auth.authenticateToken, async (req, res) => {
     console.error('Change password error:', error);
     res.status(500).json({
       error: 'Password change failed',
-      message: 'Internal server error during password change'
+      message: 'Internal server error during password change${'
     });
   }
 });
@@ -387,7 +427,7 @@ router.put('/reset-password/:userId', auth.authenticateToken, auth.authorizeRole
     const { newPassword, sendEmail = true } = req.body;
 
     // Get user to reset
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+    const user = await db.get('SELECT * FROM users WHERE id = $1', [userId]);
     if (!user) {
       return res.status(404).json({
         error: 'User not found',
@@ -400,7 +440,7 @@ router.put('/reset-password/:userId', auth.authenticateToken, auth.authorizeRole
 
     // Update password
     await db.run(
-      'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [newPasswordHash, userId]
     );
 
@@ -521,14 +561,14 @@ router.put('/profile', auth.authenticateToken, async (req, res) => {
     // Update user profile
     await db.run(
       `UPDATE users SET 
-        first_name = ?, last_name = ?, phone = ?, address = ?, 
-        date_of_birth = ?, gender = ?, updated_at = CURRENT_TIMESTAMP 
-        WHERE id = ?`,
+        first_name = $1, last_name = $2, phone = $3, address = $4, 
+        date_of_birth = $5, gender = $6, updated_at = CURRENT_TIMESTAMP 
+        WHERE id = $7`,
       [first_name, last_name, phone, address, date_of_birth, gender, req.user.id]
     );
 
     // Get updated user
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    const user = await db.get('SELECT * FROM users WHERE id = $1', [req.user.id]);
     delete user.password_hash;
 
     res.json({
@@ -552,7 +592,7 @@ router.post('/users/push-token', auth.authenticateToken, async (req, res) => {
     if (!push_token) {
       return res.status(400).json({ error: 'Missing push_token' });
     }
-    await db.run('UPDATE users SET push_token = ? WHERE id = ?', [push_token, userId]);
+    await db.run('UPDATE users SET push_token = $1 WHERE id = $2', [push_token, userId]);
     res.json({ success: true, message: 'Push token saved' });
   } catch (error) {
     console.error('Save push token error:', error);
@@ -581,4 +621,4 @@ router.get('/verify', auth.authenticateToken, (req, res) => {
   });
 });
 
-module.exports = router; 
+module.exports = router;
