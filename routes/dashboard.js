@@ -113,7 +113,7 @@ router.get('/assignments', auth.authenticateToken, async (req, res) => {
           FROM assignments a
           JOIN classes cl ON a.class_id = cl.id
           JOIN courses c ON cl.course_id = c.id
-          WHERE cl.teacher_id = ? AND a.status != 'deleted'
+          WHERE cl.teacher_id = $1 AND a.status != 'deleted'
           ORDER BY a.due_date ASC
         `, [user.id]);
         break;
@@ -125,7 +125,7 @@ router.get('/assignments', auth.authenticateToken, async (req, res) => {
           JOIN courses c ON cl.course_id = c.id
           JOIN users u ON cl.teacher_id = u.id
           JOIN class_enrollments ce ON cl.id = ce.class_id
-          WHERE ce.student_id = ? AND a.status != 'deleted'
+          WHERE ce.student_id = $1 AND a.status != 'deleted'
           ORDER BY a.due_date ASC
         `, [user.id]);
         break;
@@ -136,7 +136,7 @@ router.get('/assignments', auth.authenticateToken, async (req, res) => {
           JOIN classes cl ON a.class_id = cl.id
           JOIN courses c ON cl.course_id = c.id
           JOIN users u ON cl.teacher_id = u.id
-          WHERE c.college_id = ? AND a.status != 'deleted'
+          WHERE c.college_id = $1 AND a.status != 'deleted'
           ORDER BY a.due_date ASC
         `, [user.college_id]);
         break;
@@ -165,7 +165,7 @@ router.get('/attendance', auth.authenticateToken, async (req, res) => {
           JOIN users s ON a.student_id = s.id
           JOIN classes cl ON a.class_id = cl.id
           JOIN courses c ON cl.course_id = c.id
-          WHERE cl.teacher_id = ? AND a.date >= date('now', '-30 days')
+          WHERE cl.teacher_id = $1 AND a.date >= date('now', '-30 days')
           ORDER BY a.date DESC, s.first_name, s.last_name
         `, [user.id]);
         break;
@@ -176,7 +176,7 @@ router.get('/attendance', auth.authenticateToken, async (req, res) => {
           JOIN classes cl ON a.class_id = cl.id
           JOIN courses c ON cl.course_id = c.id
           JOIN users u ON cl.teacher_id = u.id
-          WHERE a.student_id = ? AND a.date >= date('now', '-30 days')
+          WHERE a.student_id = $1 AND a.date >= date('now', '-30 days')
           ORDER BY a.date DESC
         `, [user.id]);
         break;
@@ -188,7 +188,7 @@ router.get('/attendance', auth.authenticateToken, async (req, res) => {
           JOIN classes cl ON a.class_id = cl.id
           JOIN courses c ON cl.course_id = c.id
           JOIN users u ON cl.teacher_id = u.id
-          WHERE c.college_id = ? AND a.date >= date('now', '-30 days')
+          WHERE c.college_id = $1 AND a.date >= date('now', '-30 days')
           ORDER BY a.date DESC
         `, [user.college_id]);
         break;
@@ -218,7 +218,7 @@ router.get('/grades', auth.authenticateToken, async (req, res) => {
           JOIN assignments a ON g.assignment_id = a.id
           JOIN classes cl ON a.class_id = cl.id
           JOIN courses c ON cl.course_id = c.id
-          WHERE cl.teacher_id = ? AND g.status != 'deleted'
+          WHERE cl.teacher_id = $1 AND g.status != 'deleted'
           ORDER BY g.created_at DESC
         `, [user.id]);
         break;
@@ -230,7 +230,7 @@ router.get('/grades', auth.authenticateToken, async (req, res) => {
           JOIN classes cl ON a.class_id = cl.id
           JOIN courses c ON cl.course_id = c.id
           JOIN users u ON cl.teacher_id = u.id
-          WHERE g.student_id = ? AND g.status != 'deleted'
+          WHERE g.student_id = $1 AND g.status != 'deleted'
           ORDER BY g.created_at DESC
         `, [user.id]);
         break;
@@ -243,7 +243,7 @@ router.get('/grades', auth.authenticateToken, async (req, res) => {
           JOIN classes cl ON a.class_id = cl.id
           JOIN courses c ON cl.course_id = c.id
           JOIN users u ON cl.teacher_id = u.id
-          WHERE c.college_id = ? AND g.status != 'deleted'
+          WHERE c.college_id = $1 AND g.status != 'deleted'
           ORDER BY g.created_at DESC
         `, [user.college_id]);
         break;
@@ -271,7 +271,7 @@ router.get('/fees', auth.authenticateToken, async (req, res) => {
           FROM fee_collections fc
           JOIN fee_structures fs ON fc.fee_structure_id = fs.id
           JOIN courses c ON fs.course_id = c.id
-          WHERE fc.student_id = ? AND fc.status != 'deleted'
+          WHERE fc.student_id = $1 AND fc.status != 'deleted'
           ORDER BY fc.payment_date DESC
         `, [user.id]);
         break;
@@ -283,7 +283,7 @@ router.get('/fees', auth.authenticateToken, async (req, res) => {
           JOIN fee_structures fs ON fc.fee_structure_id = fs.id
           JOIN courses c ON fs.course_id = c.id
           JOIN users u ON fc.collected_by = u.id
-          WHERE c.college_id = ? AND fc.status != 'deleted'
+          WHERE c.college_id = $1 AND fc.status != 'deleted'
           ORDER BY fc.payment_date DESC
         `, [user.college_id]);
         break;
@@ -333,25 +333,25 @@ async function getCollegeAdminStats(collegeId) {
   try {
     // Get total students
     const totalStudents = await db.get(
-      'SELECT COUNT(*) as count FROM users WHERE college_id = ? AND role = "student"',
+      'SELECT COUNT(*) as count FROM users WHERE college_id = $1 AND role = "student"',
       [collegeId]
     );
     
     // Get total teachers
     const totalTeachers = await db.get(
-      'SELECT COUNT(*) as count FROM users WHERE college_id = ? AND role = "teacher"',
+      'SELECT COUNT(*) as count FROM users WHERE college_id = $1 AND role = "teacher"',
       [collegeId]
     );
     
     // Get total courses
     const totalCourses = await db.get(
-      'SELECT COUNT(*) as count FROM courses WHERE college_id = ?',
+      'SELECT COUNT(*) as count FROM courses WHERE college_id = $1',
       [collegeId]
     );
     
     // Get total fees collected
     const totalFees = await db.get(
-      'SELECT SUM(amount_paid) as total FROM fee_collections WHERE college_id = ? AND status = "paid"',
+      'SELECT SUM(amount_paid) as total FROM fee_collections WHERE college_id = $1 AND status = "paid"',
       [collegeId]
     );
 
@@ -372,7 +372,7 @@ async function getTeacherStats(teacherId, collegeId) {
   try {
     // Get teacher's classes
     const teacherClasses = await db.all(
-      'SELECT id FROM classes WHERE teacher_id = ? AND college_id = ?',
+      'SELECT id FROM classes WHERE teacher_id = $1 AND college_id = $2',
       [teacherId, collegeId]
     );
     
@@ -425,7 +425,7 @@ async function getStudentStats(studentId, collegeId) {
   try {
     // Get student's enrollments
     const studentEnrollments = await db.all(
-      'SELECT class_id FROM class_enrollments WHERE student_id = ?',
+      'SELECT class_id FROM class_enrollments WHERE student_id = $1',
       [studentId]
     );
     
@@ -441,29 +441,29 @@ async function getStudentStats(studentId, collegeId) {
     }
 
     // Create placeholders for parameterized query
-    const placeholders = classIds.map(() => '?').join(',');
+    const placeholders = classIds.map(() => '$1').join(',');
     
     // Get total courses using parameterized query
     const totalCourses = await db.get(
-      `SELECT COUNT(*) as count FROM class_enrollments WHERE student_id = ? AND class_id IN (${placeholders})`,
+      `SELECT COUNT(*) as count FROM class_enrollments WHERE student_id = $1 AND class_id IN (${placeholders})`,
       [studentId, ...classIds]
     );
     
     // Get average grade using parameterized query
     const averageGrade = await db.get(
-      `SELECT AVG(grade_percentage) as average FROM grades WHERE student_id = ? AND status != 'deleted'`,
+      `SELECT AVG(grade_percentage) as average FROM grades WHERE student_id = $1 AND status != 'deleted'`,
       [studentId]
     );
     
     // Get attendance rate using parameterized query
     const attendanceRate = await db.get(
-      `SELECT AVG(CASE WHEN status = 'present' THEN 100 ELSE 0 END) as rate FROM attendance WHERE student_id = ?`,
+      `SELECT AVG(CASE WHEN status = 'present' THEN 100 ELSE 0 END) as rate FROM attendance WHERE student_id = $1`,
       [studentId]
     );
     
     // Get total fees paid
     const totalFeesPaid = await db.get(
-      'SELECT SUM(amount_paid) as total FROM fee_collections WHERE student_id = ? AND status = "paid"',
+      'SELECT SUM(amount_paid) as total FROM fee_collections WHERE student_id = $1 AND status = "paid"',
       [studentId]
     );
 
@@ -484,7 +484,7 @@ async function getParentStats(parentId, collegeId) {
   try {
     // Get parent's children (students)
     const children = await db.all(
-      'SELECT id FROM users WHERE college_id = ? AND role = "student" AND parent_id = ?',
+      'SELECT id FROM users WHERE college_id = $1 AND role = "student" AND parent_id = ?',
       [collegeId, parentId]
     );
     
@@ -497,7 +497,7 @@ async function getParentStats(parentId, collegeId) {
     }
 
     const childIds = children.map(child => child.id);
-    const placeholders = childIds.map(() => '?').join(',');
+    const placeholders = childIds.map(() => '$1').join(',');
     
     // Get children's grades
     const childrenGrades = await db.all(
@@ -577,11 +577,11 @@ router.get('/teacher/grade-distribution', auth.authenticateToken, auth.authorize
         ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM grades g
           JOIN assignments a ON g.assignment_id = a.id
           JOIN classes cl ON a.class_id = cl.id
-          WHERE cl.teacher_id = ? AND g.status != 'deleted'), 1) as percentage
+          WHERE cl.teacher_id = $1 AND g.status != 'deleted'), 1) as percentage
       FROM grades g
       JOIN assignments a ON g.assignment_id = a.id
       JOIN classes cl ON a.class_id = cl.id
-      WHERE cl.teacher_id = ? AND g.status != 'deleted'
+      WHERE cl.teacher_id = $2 AND g.status != 'deleted'
       GROUP BY 
         CASE 
           WHEN grade_percentage >= 90 THEN 'A'
@@ -621,7 +621,7 @@ router.get('/teacher/performance-trends', auth.authenticateToken, auth.authorize
       JOIN assignments ass ON g.assignment_id = ass.id
       JOIN classes cl ON ass.class_id = cl.id
       LEFT JOIN attendance a ON cl.id = a.class_id AND a.date >= date('now', '-6 months')
-      WHERE cl.teacher_id = ? AND g.status != 'deleted'
+      WHERE cl.teacher_id = $1 AND g.status != 'deleted'
       GROUP BY strftime('%Y-%m', g.created_at)
       ORDER BY year DESC, month DESC
       LIMIT 6
@@ -662,7 +662,7 @@ router.get('/teacher/upcoming-deadlines', auth.authenticateToken, auth.authorize
       FROM assignments a
       JOIN classes cl ON a.class_id = cl.id
       LEFT JOIN assignment_submissions s ON a.id = s.assignment_id
-      WHERE cl.teacher_id = ? AND a.status = 'active' AND a.due_date >= date('now')
+      WHERE cl.teacher_id = $1 AND a.status = 'active' AND a.due_date >= date('now')
       GROUP BY a.id
       ORDER BY a.due_date ASC
       LIMIT 10
@@ -696,7 +696,7 @@ router.get('/teacher/notifications', auth.authenticateToken, auth.authorizeRoles
         n.created_at,
         n.read_status
       FROM notifications n
-      WHERE n.recipient_id = ? AND n.recipient_type = 'teacher'
+      WHERE n.recipient_id = $1 AND n.recipient_type = 'teacher'
       ORDER BY n.created_at DESC
       LIMIT 20
     `, [teacherId]);
@@ -723,7 +723,7 @@ router.put('/teacher/notifications/:id/read', auth.authenticateToken, auth.autho
     await db.run(`
       UPDATE notifications 
       SET read_status = 'read' 
-      WHERE id = ? AND recipient_id = ? AND recipient_type = 'teacher'
+      WHERE id = $1 AND recipient_id = $2 AND recipient_type = 'teacher'
     `, [id, teacherId]);
     
     res.json({

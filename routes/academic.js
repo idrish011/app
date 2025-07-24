@@ -227,26 +227,26 @@ router.get('/classes',
         JOIN courses c ON cl.course_id = c.id
         JOIN users u ON cl.teacher_id = u.id
         LEFT JOIN class_enrollments ce ON cl.id = ce.class_id
-        WHERE cl.college_id = ?
+        WHERE cl.college_id = $1
       `;
       const params = [collegeId];
 
       if (course_id) {
-        query += ' AND cl.course_id = ?';
+        query += ' AND cl.course_id = $1';
         params.push(course_id);
       }
 
       if (teacher_id) {
-        query += ' AND cl.teacher_id = ?';
+        query += ' AND cl.teacher_id = $1';
         params.push(teacher_id);
       }
 
       if (search) {
-        query += ' AND (cl.name LIKE ? OR c.name LIKE ?)';
+        query += ' AND (cl.name LIKE $1 OR c.name LIKE $2)';
         params.push(`%${search}%`, `%${search}%`);
       }
 
-      query += ' GROUP BY cl.id ORDER BY cl.created_at DESC LIMIT ? OFFSET ?';
+      query += ' GROUP BY cl.id ORDER BY cl.created_at DESC LIMIT $1 OFFSET $2';
       params.push(parseInt(limit), offset);
 
       const classes = await db.all(query, params);
@@ -336,7 +336,7 @@ router.post('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher
     // Verify teacher owns this class
     const classExists = await db.get(`
       SELECT c.* FROM classes c 
-      WHERE c.id = ? AND c.teacher_id = ?
+      WHERE c.id = $1 AND c.teacher_id =$2
     `, [class_id, req.user.id]);
 
     console.log('Class verification:', { classExists, class_id, teacher_id: req.user.id });
@@ -424,7 +424,7 @@ router.post('/assignments/:assignmentId/submit',
         FROM assignments a
         JOIN classes c ON a.class_id = c.id
         JOIN class_enrollments ce ON c.id = ce.class_id
-        WHERE a.id = ? AND ce.student_id = ? AND a.status = 'active'
+        WHERE a.id = $1 AND ce.student_id = $2 AND a.status = 'active'
       `, [assignmentId, studentId]);
 
       if (!assignment) {
@@ -442,7 +442,7 @@ router.post('/assignments/:assignmentId/submit',
       // Check if student has already submitted this assignment
       const existingSubmission = await db.get(`
         SELECT id FROM student_assignments 
-        WHERE assignment_id = ? AND student_id = ?
+        WHERE assignment_id = $1 AND student_id = $2
       `, [assignmentId, studentId]);
 
       if (existingSubmission) {
@@ -474,7 +474,7 @@ router.post('/assignments/:assignmentId/submit',
         SELECT sa.*, a.title as assignment_title, a.total_marks
         FROM student_assignments sa
         JOIN assignments a ON sa.assignment_id = a.id
-        WHERE sa.id = ?
+        WHERE sa.id = $1
       `, [submissionId]);
 
       console.log('Assignment submitted successfully:', {
@@ -523,16 +523,16 @@ router.get('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher'
   try {
     if (req.user.role === 'teacher') {
       const { class_id, status } = req.query;
-      let whereClause = 'WHERE a.created_by = ?';
+      let whereClause = 'WHERE a.created_by = $1';
       let params = [req.user.id];
 
       if (class_id) {
-        whereClause += ' AND a.class_id = ?';
+        whereClause += ' AND a.class_id = $1';
         params.push(class_id);
       }
 
       if (status) {
-        whereClause += ' AND a.status = ?';
+        whereClause += ' AND a.status = $1';
         params.push(status);
       }
 
@@ -565,8 +565,8 @@ router.get('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher'
         FROM assignments a
         JOIN classes c ON a.class_id = c.id
         JOIN class_enrollments ce ON c.id = ce.class_id
-        LEFT JOIN student_assignments sa ON a.id = sa.assignment_id AND sa.student_id = ?
-        WHERE ce.student_id = ? AND a.status = 'active'
+        LEFT JOIN student_assignments sa ON a.id = sa.assignment_id AND sa.student_id = $1
+        WHERE ce.student_id = $2 AND a.status = 'active'
         ORDER BY a.due_date ASC
       `, [req.user.id, req.user.id]);
       return res.json({ assignments, total: assignments.length });
@@ -592,7 +592,7 @@ router.get('/assignments/:assignmentId', auth.authenticateToken, auth.authorizeR
         SELECT a.*, c.name as class_name
         FROM assignments a
         JOIN classes c ON a.class_id = c.id
-        WHERE a.id = ? AND a.created_by = ?
+        WHERE a.id = $1 AND a.created_by = $2
       `, [assignmentId, req.user.id]);
 
       if (!assignment) {
@@ -607,7 +607,7 @@ router.get('/assignments/:assignmentId', auth.authenticateToken, auth.authorizeR
         SELECT sa.*, u.first_name, u.last_name, u.email
         FROM student_assignments sa
         JOIN users u ON sa.student_id = u.id
-        WHERE sa.assignment_id = ?
+        WHERE sa.assignment_id = $1
         ORDER BY sa.submitted_at DESC
       `, [assignmentId]);
 
@@ -622,7 +622,7 @@ router.get('/assignments/:assignmentId', auth.authenticateToken, auth.authorizeR
         FROM assignments a
         JOIN classes c ON a.class_id = c.id
         JOIN class_enrollments ce ON c.id = ce.class_id
-        WHERE a.id = ? AND ce.student_id = ? AND a.status = 'active'
+        WHERE a.id = $1 AND ce.student_id = $2 AND a.status = 'active'
       `, [assignmentId, req.user.id]);
 
       if (!assignment) {
@@ -636,7 +636,7 @@ router.get('/assignments/:assignmentId', auth.authenticateToken, auth.authorizeR
       const submission = await db.get(`
         SELECT sa.*
         FROM student_assignments sa
-        WHERE sa.assignment_id = ? AND sa.student_id = ?
+        WHERE sa.assignment_id = $1 AND sa.student_id = $2
       `, [assignmentId, req.user.id]);
 
       res.json({
@@ -671,7 +671,7 @@ router.put('/assignments/:assignmentId', auth.authenticateToken, auth.authorizeR
 
     // Verify teacher owns this assignment
     const assignment = await db.get(`
-      SELECT * FROM assignments WHERE id = ? AND created_by = ?
+      SELECT * FROM assignments WHERE id = $1 AND created_by = $2
     `, [assignmentId, req.user.id]);
 
     if (!assignment) {
@@ -685,10 +685,10 @@ router.put('/assignments/:assignmentId', auth.authenticateToken, auth.authorizeR
 
     await db.run(`
       UPDATE assignments SET
-        title = ?, description = ?, due_date = ?, total_marks = ?,
-        weightage = ?, assignment_type = ?, document_path = ?, status = ?,
+        title = $1, description = $2, due_date = $3, total_marks = $4,
+        weightage = $5, assignment_type = $6, document_path = $7, status = $8,
         updated_at = NOW()
-      WHERE id = ?
+      WHERE id = $9
     `, [title, description, due_date, total_marks, weightage, 
          assignment_type, documentPath, status, assignmentId]);
 
@@ -711,7 +711,7 @@ router.delete('/assignments/:assignmentId', auth.authenticateToken, auth.authori
 
     // Verify teacher owns this assignment
     const assignment = await db.get(`
-      SELECT * FROM assignments WHERE id = ? AND created_by = ?
+      SELECT * FROM assignments WHERE id = $1 AND created_by = $2
     `, [assignmentId, req.user.id]);
 
     if (!assignment) {
@@ -721,7 +721,7 @@ router.delete('/assignments/:assignmentId', auth.authenticateToken, auth.authori
       });
     }
 
-    await db.run('DELETE FROM assignments WHERE id = ?', [assignmentId]);
+    await db.run('DELETE FROM assignments WHERE id = $1', [assignmentId]);
 
     res.json({
       message: 'Assignment deleted successfully'
@@ -743,7 +743,7 @@ router.put('/assignments/:assignmentId/grade/:studentId', auth.authenticateToken
 
     // Verify teacher owns this assignment
     const assignment = await db.get(`
-      SELECT * FROM assignments WHERE id = ? AND created_by = ?
+      SELECT * FROM assignments WHERE id = $1 AND created_by = $2
     `, [assignmentId, req.user.id]);
 
     if (!assignment) {
@@ -755,8 +755,8 @@ router.put('/assignments/:assignmentId/grade/:studentId', auth.authenticateToken
 
     await db.run(`
       UPDATE student_assignments SET
-        marks_obtained = ?, feedback = ?, grade = ?, graded_at = NOW()
-      WHERE assignment_id = ? AND student_id = ?
+        marks_obtained = $1, feedback = $2, grade = $3, graded_at = NOW()
+      WHERE assignment_id = $4 AND student_id = $5
     `, [marks_obtained, feedback, grade, assignmentId, studentId]);
 
     // Send push notification to student about grade
@@ -786,7 +786,7 @@ router.get('/assignments/:assignmentId/document', auth.authenticateToken, auth.a
     const { assignmentId } = req.params;
 
     const assignment = await db.get(`
-      SELECT document_path FROM assignments WHERE id = ? AND created_by = ?
+      SELECT document_path FROM assignments WHERE id = $1 AND created_by = $2
     `, [assignmentId, req.user.id]);
 
     if (!assignment || !assignment.document_path) {
@@ -829,7 +829,7 @@ router.post('/attendance',
       // Verify class belongs to this college
       const classInfo = await db.get(`
         SELECT cl.id FROM classes cl 
-        WHERE cl.id = ? AND cl.college_id = ?
+        WHERE cl.id = $1 AND cl.college_id = $2
       `, [class_id, collegeId]);
       
       if (!classInfo) {
@@ -853,7 +853,7 @@ router.post('/attendance',
 
       // Check if attendance already marked for this student on this date
       const existingAttendance = await db.get(
-        'SELECT id FROM attendance WHERE class_id = ? AND student_id = ? AND date = ?',
+        'SELECT id FROM attendance WHERE class_id = $1 AND student_id = $2 AND date = $3',
         [class_id, student_id, date]
       );
 
@@ -869,14 +869,14 @@ router.post('/attendance',
       // Mark attendance
       await db.run(`
         INSERT INTO attendance (id, class_id, student_id, date, status, marked_by, remarks)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
       `, [attendanceId, class_id, student_id, date, status, req.user.id, remarks]);
 
       const attendance = await db.get(`
         SELECT a.*, u.first_name, u.last_name as student_name
         FROM attendance a
         JOIN users u ON a.student_id = u.id
-        WHERE a.id = ?
+        WHERE a.id = $1
       `, [attendanceId]);
 
       res.status(201).json({
@@ -921,7 +921,7 @@ router.post('/results',
       // Verify class belongs to this college
       const classInfo = await db.get(`
         SELECT cl.id FROM classes cl 
-        WHERE cl.id = ? AND cl.college_id = ?
+        WHERE cl.id = $1 AND cl.college_id = $2
       `, [class_id, collegeId]);
       
       if (!classInfo) {
@@ -940,7 +940,7 @@ router.post('/results',
       await db.run(`
         INSERT INTO results (id, class_id, student_id, assignment_id, exam_type, 
                            marks_obtained, total_marks, percentage, grade, remarks)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `, [resultId, class_id, student_id, assignment_id, exam_type, 
            marks_obtained, total_marks, percentage, grade, remarks]);
 
@@ -948,7 +948,7 @@ router.post('/results',
         SELECT r.*, u.first_name, u.last_name as student_name
         FROM results r
         JOIN users u ON r.student_id = u.id
-        WHERE r.id = ?
+        WHERE r.id = $1
       `, [resultId]);
 
       res.status(201).json({
@@ -977,7 +977,7 @@ router.get('/classes/:classId/results',
       // Verify class belongs to this college
       const classInfo = await db.get(`
         SELECT cl.id FROM classes cl 
-        WHERE cl.id = ? AND cl.college_id = ?
+        WHERE cl.id = $1 AND cl.college_id = $2
       `, [classId, collegeId]);
       
       if (!classInfo) {
@@ -993,17 +993,17 @@ router.get('/classes/:classId/results',
         FROM results r
         JOIN users u ON r.student_id = u.id
         LEFT JOIN assignments a ON r.assignment_id = a.id
-        WHERE r.class_id = ?
+        WHERE r.class_id = $1
       `;
       const params = [classId];
 
       if (student_id) {
-        query += ' AND r.student_id = ?';
+        query += ' AND r.student_id = $1';
         params.push(student_id);
       }
 
       if (exam_type) {
-        query += ' AND r.exam_type = ?';
+        query += ' AND r.exam_type = $1';
         params.push(exam_type);
       }
 
@@ -1046,7 +1046,7 @@ router.put('/classes/:classId/results/:resultId',
       // Verify class belongs to this college
       const classInfo = await db.get(`
         SELECT cl.id FROM classes cl 
-        WHERE cl.id = ? AND cl.college_id = ?
+        WHERE cl.id = $1 AND cl.college_id = $2
       `, [classId, collegeId]);
       
       if (!classInfo) {
@@ -1058,7 +1058,7 @@ router.put('/classes/:classId/results/:resultId',
 
       // Verify result exists and belongs to this class
       const existingResult = await db.get(`
-        SELECT id FROM results WHERE id = ? AND class_id = ?
+        SELECT id FROM results WHERE id = $1 AND class_id = $2
       `, [resultId, classId]);
       
       if (!existingResult) {
@@ -1074,10 +1074,10 @@ router.put('/classes/:classId/results/:resultId',
       // Update result
       await db.run(`
         UPDATE results SET
-          student_id = ?, assignment_id = ?, exam_type = ?, 
-          marks_obtained = ?, total_marks = ?, percentage = ?, 
-          grade = ?, remarks = ?
-        WHERE id = ?
+          student_id = $1, assignment_id = $2, exam_type = $3, 
+          marks_obtained = $4, total_marks = $5, percentage = $6, 
+          grade = $7, remarks = $8
+        WHERE id = $9
       `, [student_id, assignment_id, exam_type, marks_obtained, 
            total_marks, percentage, grade, remarks, resultId]);
 
@@ -1087,7 +1087,7 @@ router.put('/classes/:classId/results/:resultId',
         FROM results r
         JOIN users u ON r.student_id = u.id
         LEFT JOIN assignments a ON r.assignment_id = a.id
-        WHERE r.id = ?
+        WHERE r.id = $1
       `, [resultId]);
 
       res.json({
@@ -1116,7 +1116,7 @@ router.delete('/classes/:classId/results/:resultId',
       // Verify class belongs to this college
       const classInfo = await db.get(`
         SELECT cl.id FROM classes cl 
-        WHERE cl.id = ? AND cl.college_id = ?
+        WHERE cl.id = $1 AND cl.college_id = $2
       `, [classId, collegeId]);
       
       if (!classInfo) {
@@ -1128,7 +1128,7 @@ router.delete('/classes/:classId/results/:resultId',
 
       // Verify result exists and belongs to this class
       const existingResult = await db.get(`
-        SELECT id FROM results WHERE id = ? AND class_id = ?
+        SELECT id FROM results WHERE id = $1 AND class_id = $2
       `, [resultId, classId]);
       
       if (!existingResult) {
@@ -1139,7 +1139,7 @@ router.delete('/classes/:classId/results/:resultId',
       }
 
       // Delete result
-      await db.run('DELETE FROM results WHERE id = ?', [resultId]);
+      await db.run('DELETE FROM results WHERE id = $1', [resultId]);
 
       res.json({
         message: 'Result deleted successfully'
@@ -1175,7 +1175,7 @@ router.get('/admissions',
         JOIN users u ON a.student_id = u.id
         JOIN courses c ON a.course_id = c.id
         JOIN academic_years ay ON a.academic_year_id = ay.id
-        WHERE a.college_id = ?
+        WHERE a.college_id = $1
       `;
       const params = [collegeId];
 
@@ -1190,7 +1190,7 @@ router.get('/admissions',
         params.push(status);
       }
 
-      query += ' ORDER BY a.created_at DESC LIMIT ? OFFSET ?';
+      query += ' ORDER BY a.created_at DESC LIMIT $1 OFFSET $2';
       params.push(parseInt(limit), offset);
 
       const admissions = await db.all(query, params);
@@ -1200,7 +1200,7 @@ router.get('/admissions',
         SELECT COUNT(*) as total 
         FROM admissions a
         JOIN users u ON a.student_id = u.id
-        WHERE a.college_id = ?
+        WHERE a.college_id = $1
       `;
       const countParams = [collegeId];
 
@@ -1211,7 +1211,7 @@ router.get('/admissions',
       }
 
       if (status) {
-        countQuery += ' AND a.status = ?';
+        countQuery += ' AND a.status = $1';
         countParams.push(status);
       }
 
@@ -1265,7 +1265,7 @@ router.post('/admissions',
 
       // Verify course belongs to this college
       const course = await db.get(
-        'SELECT id FROM courses WHERE id = ? AND college_id = ?',
+        'SELECT id FROM courses WHERE id = $1 AND college_id = $2',
         [course_id, collegeId]
       );
       if (!course) {
@@ -1277,7 +1277,7 @@ router.post('/admissions',
 
       // Verify student belongs to this college
       const student = await db.get(
-        'SELECT id FROM users WHERE id = ? AND college_id = ? AND role = "student"',
+        'SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = "student"',
         [student_id, collegeId]
       );
       if (!student) {
@@ -1289,7 +1289,7 @@ router.post('/admissions',
 
       // Check if application number already exists
       const existingAdmission = await db.get(
-        'SELECT id FROM admissions WHERE application_number = ? AND college_id = ?',
+        'SELECT id FROM admissions WHERE application_number = $1 AND college_id = $2',
         [application_number, collegeId]
       );
       if (existingAdmission) {
@@ -1305,7 +1305,7 @@ router.post('/admissions',
       await db.run(`
         INSERT INTO admissions (id, college_id, course_id, student_id, academic_year_id, 
                               application_number, admission_date, documents_submitted, remarks)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `, [admissionId, collegeId, course_id, student_id, academic_year_id, 
            application_number, admission_date, documents_submitted, remarks]);
 
@@ -1318,7 +1318,7 @@ router.post('/admissions',
         JOIN users u ON a.student_id = u.id
         JOIN courses c ON a.course_id = c.id
         JOIN academic_years ay ON a.academic_year_id = ay.id
-        WHERE a.id = ?
+        WHERE a.id = $1
       `, [admissionId]);
 
       res.status(201).json({
@@ -1356,7 +1356,7 @@ router.put('/admissions/:admissionId/status',
 
       // Verify admission belongs to this college
       const admission = await db.get(
-        'SELECT id FROM admissions WHERE id = ? AND college_id = ?',
+        'SELECT id FROM admissions WHERE id = $1 AND college_id = $2',
         [admissionId, collegeId]
       );
       if (!admission) {
@@ -1369,8 +1369,8 @@ router.put('/admissions/:admissionId/status',
       // Update admission status
       await db.run(`
         UPDATE admissions 
-        SET status = ?, remarks = ?
-        WHERE id = ?
+        SET status = $1, remarks = $2
+        WHERE id = $3
       `, [status, remarks, admissionId]);
 
       const updatedAdmission = await db.get(`
@@ -1382,7 +1382,7 @@ router.put('/admissions/:admissionId/status',
         JOIN users u ON a.student_id = u.id
         JOIN courses c ON a.course_id = c.id
         JOIN academic_years ay ON a.academic_year_id = ay.id
-        WHERE a.id = ?
+        WHERE a.id = $1
       `, [admissionId]);
 
       res.json({
@@ -1417,7 +1417,7 @@ router.get('/admissions/:admissionId',
         JOIN users u ON a.student_id = u.id
         JOIN courses c ON a.course_id = c.id
         JOIN academic_years ay ON a.academic_year_id = ay.id
-        WHERE a.id = ? AND a.college_id = ?
+        WHERE a.id = $1 AND a.college_id = $2
       `, [admissionId, collegeId]);
 
       if (!admission) {
@@ -1462,7 +1462,7 @@ router.get('/reports/attendance',
           ) as attendance_rate
         FROM attendance a
         JOIN classes c ON a.class_id = c.id
-        WHERE c.college_id = ?
+        WHERE c.college_id = $1
       `, [collegeId]);
 
       // Get top performing courses
@@ -1476,7 +1476,7 @@ router.get('/reports/attendance',
         FROM attendance a
         JOIN classes cl ON a.class_id = cl.id
         JOIN courses c ON cl.course_id = c.id
-        WHERE c.college_id = ?
+        WHERE c.college_id = $1
         GROUP BY c.id, c.name, c.code
         ORDER BY attendance_rate DESC
         LIMIT 5
@@ -1494,14 +1494,14 @@ router.get('/reports/attendance',
         FROM attendance a
         JOIN classes cl ON a.class_id = cl.id
         JOIN courses c ON cl.course_id = c.id
-        WHERE c.college_id = ?
+        WHERE c.college_id = $1
         GROUP BY c.id, c.name, c.code
         ORDER BY attendance_rate DESC
       `, [collegeId]);
 
       res.json({
         message: 'Attendance report retrieved successfully',
-        overallRate: overallStats?.attendance_rate || 0,
+        overallRate: overallStats$1.attendance_rate || 0,
         totalStudents: overallStats?.total_students || 0,
         topCourses,
         courseStats
@@ -1532,7 +1532,7 @@ router.get('/reports/performance',
           COUNT(DISTINCT g.student_id) as total_students
         FROM grades g
         JOIN classes c ON g.class_id = c.id
-        WHERE c.college_id = ?
+        WHERE c.college_id = $1
       `, [collegeId]);
 
       // Get grade distribution
@@ -1547,7 +1547,7 @@ router.get('/reports/performance',
           COUNT(*) as count
         FROM grades g
         JOIN classes c ON g.class_id = c.id
-        WHERE c.college_id = ?
+        WHERE c.college_id = $1
         GROUP BY grade
         ORDER BY grade
       `, [collegeId]);
@@ -1563,7 +1563,7 @@ router.get('/reports/performance',
         JOIN classes cl ON g.class_id = cl.id
         JOIN courses c ON cl.course_id = c.id
         JOIN users u ON g.student_id = u.id
-        WHERE cl.college_id = ?
+        WHERE cl.college_id = $1
         GROUP BY g.student_id, u.first_name, u.last_name, c.name
         ORDER BY gpa DESC
         LIMIT 10
@@ -1602,14 +1602,14 @@ router.get('/reports/enrollment',
       const enrollmentStats = await db.get(`
         SELECT COUNT(*) as total_enrollment
         FROM users 
-        WHERE college_id = ? AND role = 'student'
+        WHERE college_id = $1 AND role = 'student'
       `, [collegeId]);
 
       // Get new admissions this period
       const newAdmissions = await db.get(`
         SELECT COUNT(*) as new_admissions
         FROM admissions 
-        WHERE college_id = ? AND status = 'approved'
+        WHERE college_id = $1 AND status = 'approved'
         AND admission_date >= date('now', '-1 month')
       `, [collegeId]);
 
@@ -1623,7 +1623,7 @@ router.get('/reports/enrollment',
         FROM users u
         JOIN student_courses sc ON u.id = sc.student_id
         JOIN courses c ON sc.course_id = c.id
-        WHERE u.college_id = ? AND u.role = 'student'
+        WHERE u.college_id = $1 AND u.role = 'student'
         GROUP BY c.id, c.name, c.code, c.max_students
         ORDER BY enrolled_students DESC
       `, [collegeId]);
@@ -1659,7 +1659,7 @@ router.get('/reports/financial',
           SUM(amount_paid) as total_revenue,
           COUNT(*) as total_transactions
         FROM fee_collections 
-        WHERE college_id = ? AND status = 'paid'
+        WHERE college_id = $1 AND status = 'paid'
         AND payment_date >= date('now', '-1 month')
       `, [collegeId]);
 
@@ -1669,7 +1669,7 @@ router.get('/reports/financial',
           SUM(amount_paid) as outstanding_amount,
           COUNT(*) as outstanding_count
         FROM fee_collections 
-        WHERE college_id = ? AND status = 'pending'
+        WHERE college_id = $1 AND status = 'pending'
       `, [collegeId]);
 
       // Get fee collection summary
@@ -1681,7 +1681,7 @@ router.get('/reports/financial',
           SUM(CASE WHEN fc.status = 'pending' THEN fc.amount_paid ELSE 0 END) as pending_amount
         FROM fee_collections fc
         JOIN fee_structures fs ON fc.fee_structure_id = fs.id
-        WHERE fc.college_id = ?
+        WHERE fc.college_id = $1
         GROUP BY fs.fee_type
         ORDER BY total_amount DESC
       `, [collegeId]);
@@ -1718,17 +1718,17 @@ router.get('/reports/graduation',
         SELECT 
           COUNT(*) as total_graduates,
           ROUND(
-            (COUNT(*) * 100.0 / (SELECT COUNT(*) FROM users WHERE college_id = ? AND role = 'student')), 2
+            (COUNT(*) * 100.0 / (SELECT COUNT(*) FROM users WHERE college_id = $1 AND role = 'student')), 2
           ) as graduation_rate
         FROM users 
-        WHERE college_id = ? AND role = 'student' AND graduation_date IS NOT NULL
+        WHERE college_id = $2 AND role = 'student' AND graduation_date IS NOT NULL
       `, [collegeId, collegeId]);
 
       // Get graduates this year
       const graduatesThisYear = await db.get(`
         SELECT COUNT(*) as graduates_this_year
         FROM users 
-        WHERE college_id = ? AND role = 'student' 
+        WHERE college_id = $1 AND role = 'student' 
         AND graduation_date >= date('now', 'start of year')
       `, [collegeId]);
 
@@ -1739,12 +1739,12 @@ router.get('/reports/graduation',
           c.code as course_code,
           COUNT(u.id) as graduates,
           ROUND(
-            (COUNT(u.id) * 100.0 / (SELECT COUNT(*) FROM users WHERE college_id = ? AND role = 'student')), 2
+            (COUNT(u.id) * 100.0 / (SELECT COUNT(*) FROM users WHERE college_id = $1 AND role = 'student')), 2
           ) as graduation_rate
         FROM users u
         JOIN student_courses sc ON u.id = sc.student_id
         JOIN courses c ON sc.course_id = c.id
-        WHERE u.college_id = ? AND u.role = 'student' AND u.graduation_date IS NOT NULL
+        WHERE u.college_id = $2 AND u.role = 'student' AND u.graduation_date IS NOT NULL
         GROUP BY c.id, c.name, c.code
         ORDER BY graduates DESC
       `, [collegeId, collegeId]);
@@ -1777,10 +1777,10 @@ router.get('/analytics',
       // Get overall statistics
       const stats = await db.get(`
         SELECT 
-          (SELECT COUNT(*) FROM users WHERE college_id = ? AND role = 'student') as total_students,
-          (SELECT COUNT(*) FROM users WHERE college_id = ? AND role = 'teacher') as total_teachers,
-          (SELECT COUNT(*) FROM courses WHERE college_id = ?) as total_courses,
-          (SELECT COUNT(*) FROM classes WHERE college_id = ?) as total_classes
+          (SELECT COUNT(*) FROM users WHERE college_id = $1 AND role = 'student') as total_students,
+          (SELECT COUNT(*) FROM users WHERE college_id = $2 AND role = 'teacher') as total_teachers,
+          (SELECT COUNT(*) FROM courses WHERE college_id = $3) as total_courses,
+          (SELECT COUNT(*) FROM classes WHERE college_id = $4) as total_classes
       `, [collegeId, collegeId, collegeId, collegeId]);
 
       res.json({
@@ -1806,7 +1806,7 @@ router.get('/classes', auth.authenticateToken, auth.authorizeRoles('teacher'), a
       SELECT c.*, co.name as course_name
       FROM classes c
       JOIN courses co ON c.course_id = co.id
-      WHERE c.teacher_id = ?
+      WHERE c.teacher_id = $1
       ORDER BY c.name
     `, [req.user.id]);
 
@@ -1830,7 +1830,7 @@ router.get('/classes/:classId/students', auth.authenticateToken, auth.authorizeR
     if (req.user.role === 'teacher') {
       // Verify teacher owns this class
       const classExists = await db.get(`
-        SELECT * FROM classes WHERE id = ? AND teacher_id = ?
+        SELECT * FROM classes WHERE id = $1 AND teacher_id = $2
       `, [classId, req.user.id]);
       if (!classExists) {
         return res.status(403).json({
@@ -1843,7 +1843,7 @@ router.get('/classes/:classId/students', auth.authenticateToken, auth.authorizeR
                ce.enrollment_date, ce.status as enrollment_status
         FROM class_enrollments ce
         JOIN users u ON ce.student_id = u.id
-        WHERE ce.class_id = ? AND ce.status = 'enrolled'
+        WHERE ce.class_id = $1 AND ce.status = 'enrolled'
         ORDER BY u.first_name, u.last_name
       `, [classId]);
       return res.json({ students, total: students.length });
@@ -1855,7 +1855,7 @@ router.get('/classes/:classId/students', auth.authenticateToken, auth.authorizeR
                ce.enrollment_date, ce.status as enrollment_status
         FROM class_enrollments ce
         JOIN users u ON ce.student_id = u.id
-        WHERE ce.class_id = ? AND ce.student_id = ? AND ce.status = 'enrolled'
+        WHERE ce.class_id = $1 AND ce.student_id = $2 AND ce.status = 'enrolled'
       `, [classId, studentId]);
       if (!record) {
         return res.status(403).json({ error: 'Access denied', message: 'You are not enrolled in this class' });
@@ -1899,7 +1899,7 @@ router.get('/classes/:classId/attendance', auth.authenticateToken, auth.authoriz
         SELECT u.id, u.first_name, u.last_name, u.email, u.profile_image
         FROM class_enrollments ce
         JOIN users u ON ce.student_id = u.id
-        WHERE ce.class_id = ? AND ce.status = 'enrolled'
+        WHERE ce.class_id = $1 AND ce.status = 'enrolled'
         ORDER BY u.first_name, u.last_name
       `, [classId]);
 
@@ -1907,7 +1907,7 @@ router.get('/classes/:classId/attendance', auth.authenticateToken, auth.authoriz
       const existingAttendance = await db.all(`
         SELECT student_id, status, remarks
         FROM attendance
-        WHERE class_id = ? AND date = ?
+        WHERE class_id = $1 AND date = $2
       `, [classId, attendanceDate]);
 
       // Create attendance map
@@ -1939,7 +1939,7 @@ router.get('/classes/:classId/attendance', auth.authenticateToken, auth.authoriz
       const studentId = req.user.id;
       // Verify student is enrolled in this class
       const enrolled = await db.get(`
-        SELECT * FROM class_enrollments WHERE class_id = ? AND student_id = ? AND status = 'enrolled'
+        SELECT * FROM class_enrollments WHERE class_id = $1 AND student_id = $2 AND status = 'enrolled'
       `, [classId, studentId]);
       if (!enrolled) {
         return res.status(403).json({ error: 'Access denied', message: 'You are not enrolled in this class' });
@@ -1948,7 +1948,7 @@ router.get('/classes/:classId/attendance', auth.authenticateToken, auth.authoriz
       const records = await db.all(`
         SELECT date, status, remarks
         FROM attendance
-        WHERE class_id = ? AND student_id = ?
+        WHERE class_id = $1 AND student_id = $2
         ORDER BY date DESC
       `, [classId, studentId]);
       // Calculate summary
@@ -1982,7 +1982,7 @@ router.post('/classes/:classId/attendance', auth.authenticateToken, auth.authori
 
     // Verify teacher owns this class
     const classExists = await db.get(`
-      SELECT cl.*, cl.college_id FROM classes cl WHERE cl.id = ? AND cl.teacher_id = ?
+      SELECT cl.*, cl.college_id FROM classes cl WHERE cl.id = $1 AND cl.teacher_id = $2
     `, [classId, req.user.id]);
 
     if (!classExists) {
@@ -2019,7 +2019,7 @@ router.post('/classes/:classId/attendance', auth.authenticateToken, auth.authori
       // Delete existing attendance for this date
       await db.run(`
         DELETE FROM attendance 
-        WHERE class_id = ? AND date = ?
+        WHERE class_id = $1 AND date = $2
       `, [classId, date]);
 
       // Insert new attendance records
@@ -2028,7 +2028,7 @@ router.post('/classes/:classId/attendance', auth.authenticateToken, auth.authori
           await db.run(`
             INSERT INTO attendance (
               id, class_id, student_id, date, status, remarks, marked_by, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
           `, [
             uuidv4(),
             classId,
@@ -2069,7 +2069,7 @@ router.get('/classes/:classId/attendance/report', auth.authenticateToken, auth.a
 
     // Verify teacher owns this class
     const classExists = await db.get(`
-      SELECT * FROM classes WHERE id = ? AND teacher_id = ?
+      SELECT * FROM classes WHERE id = $1 AND teacher_id = $2
     `, [classId, req.user.id]);
 
     if (!classExists) {
@@ -2101,9 +2101,9 @@ router.get('/classes/:classId/attendance/report', auth.authenticateToken, auth.a
       FROM class_enrollments ce
       JOIN users u ON ce.student_id = u.id
       LEFT JOIN attendance a ON u.id = a.student_id 
-        AND a.class_id = ? 
-        AND a.date BETWEEN ? AND ?
-      WHERE ce.class_id = ? AND ce.status = 'enrolled'
+        AND a.class_id = $1 
+        AND a.date BETWEEN $2 AND $3
+      WHERE ce.class_id = $4 AND ce.status = 'enrolled'
       GROUP BY u.id, u.first_name, u.last_name, u.email
       ORDER BY u.first_name, u.last_name
     `, [classId, startDate, endDate, classId]);
@@ -2113,7 +2113,7 @@ router.get('/classes/:classId/attendance/report', auth.authenticateToken, auth.a
       SELECT c.*, co.name as course_name
       FROM classes c
       JOIN courses co ON c.course_id = co.id
-      WHERE c.id = ?
+      WHERE c.id = $1
     `, [classId]);
 
     res.json({
@@ -2142,7 +2142,7 @@ router.get('/classes/:classId/attendance/calendar', auth.authenticateToken, auth
 
     // Verify teacher owns this class
     const classExists = await db.get(`
-      SELECT cl.*, cl.college_id FROM classes cl WHERE cl.id = ? AND cl.teacher_id = ?
+      SELECT cl.*, cl.college_id FROM classes cl WHERE cl.id = $1 AND cl.teacher_id = $2
     `, [classId, req.user.id]);
 
     if (!classExists) {
@@ -2206,7 +2206,7 @@ router.post('/academic-years', auth.authenticateToken, auth.authorizeRoles('coll
       return res.status(400).json({ error: 'Missing required fields', message: 'Name, start_date, and end_date are required' });
     }
     const id = uuidv4();
-    await db.run(`INSERT INTO academic_years (id, college_id, name, start_date, end_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())`, [id, collegeId, name, start_date, end_date, status || 'active']);
+    await db.run(`INSERT INTO academic_years (id, college_id, name, start_date, end_date, status, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())`, [id, collegeId, name, start_date, end_date, status || 'active']);
     const year = await db.get('SELECT * FROM academic_years WHERE id = ?', [id]);
     res.status(201).json({ message: 'Academic year created', year });
   } catch (error) {
@@ -2219,7 +2219,7 @@ router.post('/academic-years', auth.authenticateToken, auth.authorizeRoles('coll
 router.get('/academic-years', auth.authenticateToken, auth.authorizeRoles('college_admin'), async (req, res) => {
   try {
     const collegeId = req.user.college_id;
-    const years = await db.all('SELECT * FROM academic_years WHERE college_id = ? ORDER BY start_date DESC', [collegeId]);
+    const years = await db.all('SELECT * FROM academic_years WHERE college_id = $1 ORDER BY start_date DESC', [collegeId]);
     res.json({ years });
   } catch (error) {
     console.error('Get academic years error:', error);
@@ -2233,8 +2233,8 @@ router.put('/academic-years/:id', auth.authenticateToken, auth.authorizeRoles('c
     const { id } = req.params;
     const { name, start_date, end_date, status } = req.body;
     const collegeId = req.user.college_id;
-    await db.run('UPDATE academic_years SET name = ?, start_date = ?, end_date = ?, status = ? WHERE id = ? AND college_id = ?', [name, start_date, end_date, status, id, collegeId]);
-    const year = await db.get('SELECT * FROM academic_years WHERE id = ?', [id]);
+    await db.run('UPDATE academic_years SET name = $1, start_date = $2, end_date = $3, status = $4 WHERE id = $5 AND college_id = $6', [name, start_date, end_date, status, id, collegeId]);
+    const year = await db.get('SELECT * FROM academic_years WHERE id = $1', [id]);
     res.json({ message: 'Academic year updated', year });
   } catch (error) {
     console.error('Update academic year error:', error);
@@ -2247,7 +2247,7 @@ router.delete('/academic-years/:id', auth.authenticateToken, auth.authorizeRoles
   try {
     const { id } = req.params;
     const collegeId = req.user.college_id;
-    await db.run('DELETE FROM academic_years WHERE id = ? AND college_id = ?', [id, collegeId]);
+    await db.run('DELETE FROM academic_years WHERE id = $1 AND college_id = $2', [id, collegeId]);
     res.json({ message: 'Academic year deleted' });
   } catch (error) {
     console.error('Delete academic year error:', error);
@@ -2266,13 +2266,13 @@ router.post('/semesters', auth.authenticateToken, auth.authorizeRoles('college_a
       return res.status(400).json({ error: 'Missing required fields', message: 'Academic year, name, start_date, and end_date are required' });
     }
     // Verify academic year belongs to this college
-    const year = await db.get('SELECT id FROM academic_years WHERE id = ? AND college_id = ?', [academic_year_id, collegeId]);
+    const year = await db.get('SELECT id FROM academic_years WHERE id = $1 AND college_id = $2', [academic_year_id, collegeId]);
     if (!year) {
       return res.status(404).json({ error: 'Academic year not found', message: 'Academic year does not exist in this college' });
     }
     const id = uuidv4();
-    await db.run(`INSERT INTO semesters (id, academic_year_id, name, start_date, end_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())`, [id, academic_year_id, name, start_date, end_date, status || 'active']);
-    const semester = await db.get('SELECT * FROM semesters WHERE id = ?', [id]);
+    await db.run(`INSERT INTO semesters (id, academic_year_id, name, start_date, end_date, status, created_at) VALUES ($1, $2, $3, #4, $5, $6, NOW())`, [id, academic_year_id, name, start_date, end_date, status || 'active']);
+    const semester = await db.get('SELECT * FROM semesters WHERE id = $1', [id]);
     res.status(201).json({ message: 'Semester created', semester });
   } catch (error) {
     console.error('Create semester error:', error);
@@ -2284,7 +2284,7 @@ router.post('/semesters', auth.authenticateToken, auth.authorizeRoles('college_a
 router.get('/semesters', auth.authenticateToken, auth.authorizeRoles('college_admin'), async (req, res) => {
   try {
     const collegeId = req.user.college_id;
-    const semesters = await db.all(`SELECT s.* FROM semesters s JOIN academic_years ay ON s.academic_year_id = ay.id WHERE ay.college_id = ? ORDER BY s.start_date DESC`, [collegeId]);
+    const semesters = await db.all(`SELECT s.* FROM semesters s JOIN academic_years ay ON s.academic_year_id = ay.id WHERE ay.college_id = $1 ORDER BY s.start_date DESC`, [collegeId]);
     res.json({ semesters });
   } catch (error) {
     console.error('Get semesters error:', error);
@@ -2298,10 +2298,10 @@ router.put('/semesters/:id', auth.authenticateToken, auth.authorizeRoles('colleg
     const { id } = req.params;
     const { name, start_date, end_date, status } = req.body;
     // Only allow update if semester belongs to college
-    const semester = await db.get('SELECT s.* FROM semesters s JOIN academic_years ay ON s.academic_year_id = ay.id WHERE s.id = ? AND ay.college_id = ?', [id, req.user.college_id]);
+    const semester = await db.get('SELECT s.* FROM semesters s JOIN academic_years ay ON s.academic_year_id = ay.id WHERE s.id = $1 AND ay.college_id = $2', [id, req.user.college_id]);
     if (!semester) return res.status(404).json({ error: 'Semester not found', message: 'Semester does not exist in this college' });
-    await db.run('UPDATE semesters SET name = ?, start_date = ?, end_date = ?, status = ? WHERE id = ?', [name, start_date, end_date, status, id]);
-    const updated = await db.get('SELECT * FROM semesters WHERE id = ?', [id]);
+    await db.run('UPDATE semesters SET name = $1, start_date = $2, end_date = $3, status = $4 WHERE id = $5', [name, start_date, end_date, status, id]);
+    const updated = await db.get('SELECT * FROM semesters WHERE id = $1', [id]);
     res.json({ message: 'Semester updated', semester: updated });
   } catch (error) {
     console.error('Update semester error:', error);
@@ -2314,9 +2314,9 @@ router.delete('/semesters/:id', auth.authenticateToken, auth.authorizeRoles('col
   try {
     const { id } = req.params;
     // Only allow delete if semester belongs to college
-    const semester = await db.get('SELECT s.* FROM semesters s JOIN academic_years ay ON s.academic_year_id = ay.id WHERE s.id = ? AND ay.college_id = ?', [id, req.user.college_id]);
+    const semester = await db.get('SELECT s.* FROM semesters s JOIN academic_years ay ON s.academic_year_id = ay.id WHERE s.id = $1 AND ay.college_id = $2', [id, req.user.college_id]);
     if (!semester) return res.status(404).json({ error: 'Semester not found', message: 'Semester does not exist in this college' });
-    await db.run('DELETE FROM semesters WHERE id = ?', [id]);
+    await db.run('DELETE FROM semesters WHERE id = $1', [id]);
     res.json({ message: 'Semester deleted' });
   } catch (error) {
     console.error('Delete semester error:', error);
@@ -2333,15 +2333,15 @@ router.post('/classes/:classId/enroll-students', auth.authenticateToken, auth.au
     const { student_ids } = req.body; // array of student IDs
     const collegeId = req.user.college_id;
     // Verify class belongs to this college
-    const classInfo = await db.get('SELECT * FROM classes WHERE id = ? AND college_id = ?', [classId, collegeId]);
+    const classInfo = await db.get('SELECT * FROM classes WHERE id = $1 AND college_id = $2', [classId, collegeId]);
     if (!classInfo) return res.status(404).json({ error: 'Class not found', message: 'Class does not exist in this college' });
     if (!Array.isArray(student_ids) || student_ids.length === 0) return res.status(400).json({ error: 'No students provided', message: 'student_ids must be a non-empty array' });
     let enrolled = 0;
     for (const student_id of student_ids) {
       // Verify student belongs to this college
-      const student = await db.get('SELECT id FROM users WHERE id = ? AND college_id = ? AND role = "student"', [student_id, collegeId]);
+      const student = await db.get('SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = "student"', [student_id, collegeId]);
       if (student) {
-        await db.run('INSERT OR IGNORE INTO class_enrollments (id, class_id, student_id, enrollment_date, status, created_at) VALUES (?, ?, ?, NOW(), "enrolled", NOW())', [uuidv4(), classId, student_id]);
+        await db.run('INSERT OR IGNORE INTO class_enrollments (id, class_id, student_id, enrollment_date, status, created_at) VALUES ($1, $2, $3, NOW(), "enrolled", NOW())', [uuidv4(), classId, student_id]);
         enrolled++;
       }
     }
@@ -2358,9 +2358,9 @@ router.delete('/classes/:classId/students/:studentId', auth.authenticateToken, a
     const { classId, studentId } = req.params;
     const collegeId = req.user.college_id;
     // Verify class belongs to this college
-    const classInfo = await db.get('SELECT * FROM classes WHERE id = ? AND college_id = ?', [classId, collegeId]);
+    const classInfo = await db.get('SELECT * FROM classes WHERE id = $1 AND college_id = $2', [classId, collegeId]);
     if (!classInfo) return res.status(404).json({ error: 'Class not found', message: 'Class does not exist in this college' });
-    await db.run('DELETE FROM class_enrollments WHERE class_id = ? AND student_id = ?', [classId, studentId]);
+    await db.run('DELETE FROM class_enrollments WHERE class_id = $1 AND student_id = $2', [classId, studentId]);
     res.json({ message: 'Student removed from class' });
   } catch (error) {
     console.error('Remove student error:', error);
@@ -2374,9 +2374,9 @@ router.get('/classes/:classId/students', auth.authenticateToken, auth.authorizeR
     const { classId } = req.params;
     const collegeId = req.user.college_id;
     // Verify class belongs to this college
-    const classInfo = await db.get('SELECT * FROM classes WHERE id = ? AND college_id = ?', [classId, collegeId]);
+    const classInfo = await db.get('SELECT * FROM classes WHERE id = $1 AND college_id = $2', [classId, collegeId]);
     if (!classInfo) return res.status(404).json({ error: 'Class not found', message: 'Class does not exist in this college' });
-    const students = await db.all('SELECT u.id, u.first_name, u.last_name, u.email, u.profile_image FROM class_enrollments ce JOIN users u ON ce.student_id = u.id WHERE ce.class_id = ? AND ce.status = "enrolled"', [classId]);
+    const students = await db.all('SELECT u.id, u.first_name, u.last_name, u.email, u.profile_image FROM class_enrollments ce JOIN users u ON ce.student_id = u.id WHERE ce.class_id = $1 AND ce.status = "enrolled"', [classId]);
     res.json({ students });
   } catch (error) {
     console.error('List students error:', error);
@@ -2390,7 +2390,7 @@ router.get('/classes/:classId/students', auth.authenticateToken, auth.authorizeR
 router.get('/teachers', auth.authenticateToken, auth.authorizeRoles('college_admin'), async (req, res) => {
   try {
     const collegeId = req.user.college_id;
-    const teachers = await db.all('SELECT id, first_name, last_name, email, profile_image FROM users WHERE college_id = ? AND role = "teacher"', [collegeId]);
+    const teachers = await db.all('SELECT id, first_name, last_name, email, profile_image FROM users WHERE college_id = $1 AND role = "teacher"', [collegeId]);
     res.json({ teachers });
   } catch (error) {
     console.error('List teachers error:', error);
@@ -2402,7 +2402,7 @@ router.get('/teachers', auth.authenticateToken, auth.authorizeRoles('college_adm
 router.get('/students', auth.authenticateToken, auth.authorizeRoles('college_admin'), async (req, res) => {
   try {
     const collegeId = req.user.college_id;
-    const students = await db.all('SELECT id, first_name, last_name, email, profile_image FROM users WHERE college_id = ? AND role = "student"', [collegeId]);
+    const students = await db.all('SELECT id, first_name, last_name, email, profile_image FROM users WHERE college_id = $1 AND role = "student"', [collegeId]);
     res.json({ students });
   } catch (error) {
     console.error('List students error:', error);
@@ -2430,7 +2430,7 @@ router.get('/attendance/overview', auth.authenticateToken, auth.authorizeRoles('
       JOIN class_enrollments ce ON u.id = ce.student_id
       JOIN classes cl ON ce.class_id = cl.id
       LEFT JOIN attendance a ON u.id = a.student_id AND a.class_id = cl.id
-      WHERE cl.teacher_id = ? AND u.role = 'student' AND ce.status = 'enrolled'
+      WHERE cl.teacher_id = $1 AND u.role = 'student' AND ce.status = 'enrolled'
       GROUP BY u.id, u.first_name, u.last_name, c.name
       ORDER BY attendance_percentage ASC
     `, [teacherId]);
@@ -2468,7 +2468,7 @@ router.get('/assignments/pending-grading', auth.authenticateToken, auth.authoriz
       JOIN assignments a ON s.assignment_id = a.id
       JOIN classes cl ON a.class_id = cl.id
       JOIN courses c ON cl.course_id = c.id
-      WHERE cl.teacher_id = ? AND s.status = 'submitted'
+      WHERE cl.teacher_id = $1 AND s.status = 'submitted'
       ORDER BY s.submitted_date DESC
     `, [teacherId]);
     
@@ -2498,7 +2498,7 @@ router.post('/submissions/:id/grade', auth.authenticateToken, auth.authorizeRole
       FROM assignment_submissions s
       JOIN assignments a ON s.assignment_id = a.id
       JOIN classes cl ON a.class_id = cl.id
-      WHERE s.id = ? AND cl.teacher_id = ?
+      WHERE s.id = $1 AND cl.teacher_id = $2
     `, [id, teacherId]);
     
     if (!submission) {
@@ -2511,14 +2511,14 @@ router.post('/submissions/:id/grade', auth.authenticateToken, auth.authorizeRole
     // Update submission
     await db.run(`
       UPDATE assignment_submissions 
-      SET grade_percentage = ?, feedback = ?, status = ?, graded_at = NOW()
+      SET grade_percentage = $1, feedback = $2, status = $3, graded_at = NOW()
       WHERE id = ?
     `, [grade_percentage, feedback, status, id]);
     
     // Create grade record
     await db.run(`
       INSERT INTO grades (assignment_id, student_id, grade_percentage, feedback, graded_by, status)
-      VALUES (?, ?, ?, ?, ?, ?)
+      VALUES ($1, $2, $3, $4, $5, $6)
     `, [submission.assignment_id, submission.student_id, grade_percentage, feedback, teacherId, 'active']);
     
     res.json({
@@ -2563,17 +2563,17 @@ router.get('/admission-inquiries',
 
       let query = `
         SELECT * FROM admission_inquiries 
-        WHERE college_id = ?
+        WHERE college_id = $1
       `;
       const params = [collegeId];
 
       if (search) {
-        query += ' AND (name LIKE ? OR email LIKE ? OR phone LIKE ? OR message LIKE ?)';
+        query += ' AND (name LIKE $1 OR email LIKE $2 OR phone LIKE $3 OR message LIKE $4)';
         const searchTerm = `%${search}%`;
         params.push(searchTerm, searchTerm, searchTerm, searchTerm);
       }
 
-      query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+      query += ' ORDER BY created_at DESC LIMIT $1 OFFSET $2';
       params.push(parseInt(limit), offset);
 
       const inquiries = await db.all(query, params);
@@ -2582,12 +2582,12 @@ router.get('/admission-inquiries',
       let countQuery = `
         SELECT COUNT(*) as total 
         FROM admission_inquiries 
-        WHERE college_id = ?
+        WHERE college_id = $1
       `;
       const countParams = [collegeId];
 
       if (search) {
-        countQuery += ' AND (name LIKE ? OR email LIKE ? OR phone LIKE ? OR message LIKE ?)';
+        countQuery += ' AND (name LIKE $1 OR email LIKE $2 OR phone LIKE $3 OR message LIKE $4)';
         const searchTerm = `%${search}%`;
         countParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
       }
@@ -2625,7 +2625,7 @@ router.get('/admission-inquiries/:id',
 
       const inquiry = await db.get(`
         SELECT * FROM admission_inquiries 
-        WHERE id = ? AND college_id = ?
+        WHERE id = $1 AND college_id = $2
       `, [id, collegeId]);
 
       if (!inquiry) {
@@ -2655,7 +2655,7 @@ router.post('/admission-inquiries', async (req, res) => {
     }
     const id = uuidv4();
     await db.run(
-      `INSERT INTO admission_inquiries (id, college_id, name, email, phone, message) VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO admission_inquiries (id, college_id, name, email, phone, message) VALUES ($1, $2, $3, $4, $5, $6)`,
       [id, college_id, name, email, phone, message]
     );
     res.status(201).json({ message: 'Inquiry submitted successfully' });

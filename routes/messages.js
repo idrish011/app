@@ -99,7 +99,7 @@ router.post('/',
         INSERT INTO messages (
           id, title, content, type, priority, sender_id, sender_name,
           target_type, target_ids, attachments, expires_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, datetime('now'), datetime('now'))
       `, [
         messageId, title, content, type, priority, senderId, senderName,
         target_type, parsedTargetIds, attachments, expires_at
@@ -111,7 +111,7 @@ router.post('/',
       if (req.user.role === 'teacher') {
         // Teachers can send to their students only
         const teacherClasses = await db.all(
-          'SELECT id FROM classes WHERE teacher_id = ?',
+          'SELECT id FROM classes WHERE teacher_id = $1',
           [req.user.id]
         );
 
@@ -132,7 +132,7 @@ router.post('/',
             SELECT u.id, u.first_name, u.last_name, u.email, u.push_token
             FROM users u
             JOIN class_enrollments ce ON u.id = ce.student_id
-            WHERE ce.class_id IN (${placeholders}) AND u.id IN (${targetIds.map(() => '?').join(',')})
+            WHERE ce.class_id IN (${placeholders}) AND u.id IN (${targetIds.map(() => '$1').join(',')})
           `, [...classIds, ...targetIds]);
         } else {
           // Send to all students in teacher's classes
@@ -147,24 +147,24 @@ router.post('/',
         // College admins can send to all users in their college
         if (target_type === 'specific') {
           const targetIds = JSON.parse(target_ids);
-          const placeholders = targetIds.map(() => '?').join(',');
+          const placeholders = targetIds.map(() => '$1').join(',');
           recipients = await db.all(`
             SELECT id, first_name, last_name, email, push_token
             FROM users
-            WHERE college_id = ? AND id IN (${placeholders})
+            WHERE college_id = $1 AND id IN (${placeholders})
           `, [req.user.college_id, ...targetIds]);
         } else {
           recipients = await db.all(`
             SELECT id, first_name, last_name, email, push_token
             FROM users
-            WHERE college_id = ?
+            WHERE college_id = $1
           `, [req.user.college_id]);
         }
       } else if (req.user.role === 'super_admin') {
         // Super admin can send to all users
         if (target_type === 'specific') {
           const targetIds = JSON.parse(target_ids);
-          const placeholders = targetIds.map(() => '?').join(',');
+          const placeholders = targetIds.map(() => '$1').join(',');
           recipients = await db.all(`
             SELECT id, first_name, last_name, email, push_token
             FROM users
@@ -184,7 +184,7 @@ router.post('/',
         await db.run(`
           INSERT INTO message_recipients (
             id, message_id, recipient_id, is_read, created_at
-          ) VALUES (?, ?, ?, 0, datetime('now'))
+          ) VALUES ($1, $2, $3, 0, datetime('now'))
         `, [recipientId, messageId, recipient.id]);
 
         // Send push notification if token exists
@@ -231,16 +231,16 @@ router.get('/', auth.authenticateToken, async (req, res) => {
       SELECT m.*, mr.is_read, mr.read_at
       FROM messages m
       JOIN message_recipients mr ON m.id = mr.message_id
-      WHERE mr.recipient_id = ?
+      WHERE mr.recipient_id = $1
     `;
     const params = [userId];
 
     if (type) {
-      query += ' AND m.type = ?';
+      query += ' AND m.type = $1';
       params.push(type);
     }
 
-    query += ' ORDER BY m.created_at DESC LIMIT ? OFFSET ?';
+    query += ' ORDER BY m.created_at DESC LIMIT $1 OFFSET $2';
     params.push(limit, offset);
 
     const messages = await db.all(query, params);
@@ -250,12 +250,12 @@ router.get('/', auth.authenticateToken, async (req, res) => {
       SELECT COUNT(*) as total
       FROM messages m
       JOIN message_recipients mr ON m.id = mr.message_id
-      WHERE mr.recipient_id = ?
+      WHERE mr.recipient_id = $1
     `;
     const countParams = [userId];
 
     if (type) {
-      countQuery += ' AND m.type = ?';
+      countQuery += ' AND m.type = $1';
       countParams.push(type);
     }
 
@@ -289,7 +289,7 @@ router.get('/:messageId', auth.authenticateToken, async (req, res) => {
       SELECT m.*, mr.is_read, mr.read_at
       FROM messages m
       JOIN message_recipients mr ON m.id = mr.message_id
-      WHERE m.id = ? AND mr.recipient_id = ?
+      WHERE m.id = $1 AND mr.recipient_id = $2
     `, [messageId, userId]);
 
     if (!message) {
@@ -304,7 +304,7 @@ router.get('/:messageId', auth.authenticateToken, async (req, res) => {
       await db.run(`
         UPDATE message_recipients 
         SET is_read = 1, read_at = datetime('now')
-        WHERE message_id = ? AND recipient_id = ?
+        WHERE message_id = $1 AND recipient_id = $2
       `, [messageId, userId]);
     }
 
@@ -327,7 +327,7 @@ router.put('/:messageId/read', auth.authenticateToken, async (req, res) => {
     const result = await db.run(`
       UPDATE message_recipients 
       SET is_read = 1, read_at = datetime('now')
-      WHERE message_id = ? AND recipient_id = ?
+      WHERE message_id = $1 AND recipient_id = $2
     `, [messageId, userId]);
 
     if (result.changes === 0) {
@@ -357,7 +357,7 @@ router.delete('/:messageId', auth.authenticateToken, async (req, res) => {
 
     // Check if user is the sender
     const message = await db.get(`
-      SELECT id FROM messages WHERE id = ? AND sender_id = ?
+      SELECT id FROM messages WHERE id = $1 AND sender_id = $2
     `, [messageId, userId]);
 
     if (!message) {
@@ -368,8 +368,8 @@ router.delete('/:messageId', auth.authenticateToken, async (req, res) => {
     }
 
     // Delete message and all recipient records
-    await db.run('DELETE FROM message_recipients WHERE message_id = ?', [messageId]);
-    await db.run('DELETE FROM messages WHERE id = ?', [messageId]);
+    await db.run('DELETE FROM message_recipients WHERE message_id = $1', [messageId]);
+    await db.run('DELETE FROM messages WHERE id = $1', [messageId]);
 
     res.json({
       message: 'Message deleted successfully'

@@ -136,26 +136,26 @@ router.get('/structures',
         FROM fee_structures fs
         JOIN courses c ON fs.course_id = c.id
         JOIN academic_years ay ON fs.academic_year_id = ay.id
-        WHERE fs.college_id = ?
+        WHERE fs.college_id = $1
       `;
       const params = [collegeId];
 
       if (course_id) {
-        query += ' AND fs.course_id = ?';
+        query += ' AND fs.course_id = $1';
         params.push(course_id);
       }
 
       if (academic_year_id) {
-        query += ' AND fs.academic_year_id = ?';
+        query += ' AND fs.academic_year_id = $1';
         params.push(academic_year_id);
       }
 
       if (fee_type) {
-        query += ' AND fs.fee_type = ?';
+        query += ' AND fs.fee_type = $1';
         params.push(fee_type);
       }
 
-      query += ' ORDER BY fs.created_at DESC LIMIT ? OFFSET ?';
+      query += ' ORDER BY fs.created_at DESC LIMIT $1 OFFSET $2';
       params.push(parseInt(limit), offset);
 
       const feeStructures = await db.all(query, params);
@@ -198,7 +198,7 @@ router.post('/collections',
 
       // Verify student belongs to this college
       const student = await db.get(
-        'SELECT id FROM users WHERE id = ? AND college_id = ? AND role = "student"',
+        'SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = "student"',
         [student_id, collegeId]
       );
       if (!student) {
@@ -210,7 +210,7 @@ router.post('/collections',
 
       // Verify fee structure belongs to this college
       const feeStructure = await db.get(
-        'SELECT id, amount FROM fee_structures WHERE id = ? AND college_id = ?',
+        'SELECT id, amount FROM fee_structures WHERE id = $1 AND college_id = $2',
         [fee_structure_id, collegeId]
       );
       if (!feeStructure) {
@@ -237,7 +237,7 @@ router.post('/collections',
           id, college_id, student_id, fee_structure_id, amount_paid, 
           payment_date, payment_method, transaction_id, receipt_number, 
           remarks, collected_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       `, [collectionId, collegeId, student_id, fee_structure_id, amount_paid, 
            payment_date, payment_method, transaction_id, receiptNumber, 
            remarks, req.user.id]);
@@ -250,7 +250,7 @@ router.post('/collections',
         JOIN users u ON fc.student_id = u.id
         JOIN fee_structures fs ON fc.fee_structure_id = fs.id
         JOIN users c ON fc.collected_by = c.id
-        WHERE fc.id = ?
+        WHERE fc.id = $1
       `, [collectionId]);
 
       res.status(201).json({
@@ -293,41 +293,41 @@ router.get('/collections',
         JOIN users u ON fc.student_id = u.id
         JOIN fee_structures fs ON fc.fee_structure_id = fs.id
         JOIN users c ON fc.collected_by = c.id
-        WHERE fc.college_id = ?
+        WHERE fc.college_id = $1
       `;
       const params = [collegeId];
 
       if (student_id) {
-        query += ' AND fc.student_id = ?';
+        query += ' AND fc.student_id = $1';
         params.push(student_id);
       }
 
       if (fee_structure_id) {
-        query += ' AND fc.fee_structure_id = ?';
+        query += ' AND fc.fee_structure_id = $1';
         params.push(fee_structure_id);
       }
 
       if (payment_method) {
-        query += ' AND fc.payment_method = ?';
+        query += ' AND fc.payment_method = $1';
         params.push(payment_method);
       }
 
       if (status) {
-        query += ' AND fc.status = ?';
+        query += ' AND fc.status = $1';
         params.push(status);
       }
 
       if (start_date) {
-        query += ' AND fc.payment_date >= ?';
+        query += ' AND fc.payment_date >= $1';
         params.push(start_date);
       }
 
       if (end_date) {
-        query += ' AND fc.payment_date <= ?';
+        query += ' AND fc.payment_date <= $1';
         params.push(end_date);
       }
 
-      query += ' ORDER BY fc.payment_date DESC LIMIT ? OFFSET ?';
+      query += ' ORDER BY fc.payment_date DESC LIMIT $1 OFFSET $2';
       params.push(parseInt(limit), offset);
 
       const collections = await db.all(query, params);
@@ -362,7 +362,7 @@ router.get('/collections/:collectionId',
         JOIN users u ON fc.student_id = u.id
         JOIN fee_structures fs ON fc.fee_structure_id = fs.id
         JOIN users c ON fc.collected_by = c.id
-        WHERE fc.id = ? AND fc.college_id = ?
+        WHERE fc.id = $1 AND fc.college_id = $2
       `, [collectionId, collegeId]);
 
       if (!collection) {
@@ -398,7 +398,7 @@ router.get('/students/:studentId/summary',
 
       // Verify student belongs to this college
       const student = await db.get(
-        'SELECT id, first_name, last_name FROM users WHERE id = ? AND college_id = ? AND role = "student"',
+        'SELECT id, first_name, last_name FROM users WHERE id = $1 AND college_id = $2 AND role = "student"',
         [studentId, collegeId]
       );
       if (!student) {
@@ -417,8 +417,8 @@ router.get('/students/:studentId/summary',
           SUM(fc.amount_paid) as total_paid,
           (SUM(fs.amount) - SUM(COALESCE(fc.amount_paid, 0))) as outstanding_amount
         FROM fee_structures fs
-        LEFT JOIN fee_collections fc ON fs.id = fc.fee_structure_id AND fc.student_id = ?
-        WHERE fs.college_id = ?
+        LEFT JOIN fee_collections fc ON fs.id = fc.fee_structure_id AND fc.student_id = $1
+        WHERE fs.college_id = $2
       `, [studentId, collegeId]);
 
       // Get detailed fee breakdown
@@ -428,8 +428,8 @@ router.get('/students/:studentId/summary',
                COALESCE(fc.payment_date, NULL) as payment_date,
                COALESCE(fc.status, 'unpaid') as payment_status
         FROM fee_structures fs
-        LEFT JOIN fee_collections fc ON fs.id = fc.fee_structure_id AND fc.student_id = ?
-        WHERE fs.college_id = ?
+        LEFT JOIN fee_collections fc ON fs.id = fc.fee_structure_id AND fc.student_id = $1
+        WHERE fs.college_id = $2
         ORDER BY fs.due_date ASC
       `, [studentId, collegeId]);
 
@@ -480,7 +480,7 @@ router.get('/reports/collections',
             SUM(fc.amount_paid) as total_amount,
             COUNT(DISTINCT fc.student_id) as unique_students
           FROM fee_collections fc
-          WHERE fc.college_id = ?
+          WHERE fc.college_id = $1
         `;
         params = [collegeId];
       } else if (group_by === 'course') {
@@ -493,7 +493,7 @@ router.get('/reports/collections',
           FROM fee_collections fc
           JOIN fee_structures fs ON fc.fee_structure_id = fs.id
           JOIN courses c ON fs.course_id = c.id
-          WHERE fc.college_id = ?
+          WHERE fc.college_id = $1
         `;
         params = [collegeId];
       } else if (group_by === 'payment_method') {
@@ -503,7 +503,7 @@ router.get('/reports/collections',
             COUNT(fc.id) as total_payments,
             SUM(fc.amount_paid) as total_amount
           FROM fee_collections fc
-          WHERE fc.college_id = ?
+          WHERE fc.college_id = $1
         `;
         params = [collegeId];
       }
@@ -588,12 +588,12 @@ router.get('/reports/outstanding',
       const params = [collegeId];
 
       if (course_id) {
-        query += ' AND fs.course_id = ?';
+        query += ' AND fs.course_id = $1';
         params.push(course_id);
       }
 
       if (academic_year_id) {
-        query += ' AND fs.academic_year_id = ?';
+        query += ' AND fs.academic_year_id = $1';
         params.push(academic_year_id);
       }
 

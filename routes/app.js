@@ -35,7 +35,7 @@ router.post('/contact-messages', async (req, res) => {
 
     await db.run(
       `INSERT INTO contact_messages (id, college_id, user_id, name, email, subject, message) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [id, collegeId, userId, name, email, subject, message]
     );
 
@@ -111,7 +111,7 @@ router.put('/contact-messages/:id/status', auth.authenticateToken, auth.authoriz
     }
 
     const result = await db.run(
-      'UPDATE contact_messages SET status = ? WHERE id = ? AND college_id = ?',
+      'UPDATE contact_messages SET status = $1 WHERE id = $2 AND college_id = $3',
       [status, id, collegeId]
     );
 
@@ -156,7 +156,7 @@ router.post('/ratings', async (req, res) => {
 
     await db.run(
       `INSERT INTO app_ratings (id, college_id, user_id, rating, feedback) 
-       VALUES (?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5)`,
       [id, collegeId, userId, rating, feedback || null]
     );
 
@@ -188,7 +188,7 @@ router.get('/ratings', auth.authenticateToken, auth.authorizeRoles('college_admi
       LIMIT ? OFFSET ?
     `, [collegeId, limit, offset]);
 
-    const total = await db.get('SELECT COUNT(*) as count FROM app_ratings WHERE college_id = ?', [collegeId]);
+    const total = await db.get('SELECT COUNT(*) as count FROM app_ratings WHERE college_id = $1', [collegeId]);
     const average = await db.get('SELECT AVG(rating) as avg_rating FROM app_ratings WHERE college_id = $1', [collegeId]);
 
     res.json({
@@ -282,7 +282,7 @@ router.post('/feedback', async (req, res) => {
     // Store in contact_messages table with special type
     await db.run(
       `INSERT INTO contact_messages (id, college_id, user_id, name, email, subject, message) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [id, collegeId, userId, 'App Feedback', 'feedback@campuslink.com', `[${type.toUpperCase()}] App Feedback`, message]
     );
 
