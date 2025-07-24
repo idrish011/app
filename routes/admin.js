@@ -42,7 +42,7 @@ router.get('/dashboard/stats', auth.authenticateToken, loggers.dashboardAccess, 
       // Global stats for super admin
       stats = await db.get(`
         SELECT 
-          (SELECT COUNT(*) FROM colleges WHERE status = 'active') as total_colleges,
+          (SELECT COUNT(*) FROM colleges WHERE subscription_status = 'active') as total_colleges,
           (SELECT COUNT(*) FROM users WHERE role != 'super_admin') as total_users,
           (SELECT COUNT(*) FROM users WHERE role = 'college_admin') as total_college_admins,
           (SELECT COUNT(*) FROM users WHERE role = 'teacher') as total_teachers,
@@ -870,32 +870,32 @@ router.get('/logs', auth.authenticateToken, auth.authorizeRoles('super_admin'), 
 
     // Build where conditions
     if (user_id) {
-      whereConditions.push('user_id = ?');
+      whereConditions.push('user_id = $1');
       params.push(user_id);
     }
 
     if (user_role) {
-      whereConditions.push('user_role = ?');
+      whereConditions.push('user_role = $1');
       params.push(user_role);
     }
 
     if (action) {
-      whereConditions.push('action = ?');
+      whereConditions.push('action = $1');
       params.push(action);
     }
 
     if (entity) {
-      whereConditions.push('entity = ?');
+      whereConditions.push('entity = $1');
       params.push(entity);
     }
 
     if (start_date) {
-      whereConditions.push('timestamp >= ?');
+      whereConditions.push('timestamp >= $1');
       params.push(start_date);
     }
 
     if (end_date) {
-      whereConditions.push('timestamp <= ?');
+      whereConditions.push('timestamp <= $1');
       params.push(end_date);
     }
 
