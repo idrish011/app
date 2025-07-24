@@ -48,7 +48,7 @@ class AuthMiddleware {
           user = await this.db.get(`
             SELECT u.*, 'system' as college_name, 'system' as college_domain 
             FROM users u 
-            WHERE u.id = ? AND u.status = 'active'
+            WHERE u.id = $1 AND u.status = 'active'
           `, [decoded.userId]);
         } else {
           // For regular users, join with colleges table
@@ -56,7 +56,7 @@ class AuthMiddleware {
             SELECT u.*, c.name as college_name, c.domain as college_domain 
             FROM users u 
             JOIN colleges c ON u.college_id = c.id 
-            WHERE u.id = ? AND u.status = 'active'
+            WHERE u.id = $1 AND u.status = 'active'
           `, [decoded.userId]);
         }
 
@@ -76,10 +76,19 @@ class AuthMiddleware {
         next();
       } catch (error) {
         console.error('Authentication error:', error);
-        return res.status(500).json({ 
-          error: 'Authentication failed',
-          message: 'Internal server error during authentication'
-        });
+        // Show full error in development for debugging
+        if (process.env.NODE_ENV !== 'production') {
+          res.status(500).json({ 
+            error: 'Authentication failed',
+            message: error.message,
+            details: error
+          });
+        } else {
+          res.status(500).json({ 
+            error: 'Authentication failed',
+            message: 'Internal server error during authentication'
+          });
+        }
       }
     });
   };
@@ -412,4 +421,4 @@ class AuthMiddleware {
   };
 }
 
-module.exports = AuthMiddleware; 
+module.exports = AuthMiddleware;

@@ -337,6 +337,7 @@ router.post('/login', auth.validateLogin, auth.checkValidationResult, async (req
     }
 
     // Verify password
+    console.log(`[Login] password_hash for user ${user.id}: ${user.password_hash}`);
     const isValidPassword = await auth.comparePassword(password, user.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({
