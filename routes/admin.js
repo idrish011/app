@@ -661,7 +661,7 @@ router.post('/colleges', auth.authenticateToken, auth.authorizeRoles('super_admi
 
     // Check if college already exists
     const existingCollege = await db.get(
-      'SELECT id FROM colleges WHERE domain = ?',
+      'SELECT id FROM colleges WHERE domain = $1',
       [domain]
     );
 
@@ -678,13 +678,13 @@ router.post('/colleges', auth.authenticateToken, auth.authorizeRoles('super_admi
       `INSERT INTO colleges (
         id, name, domain, address, contact_phone, contact_email, subscription_status, 
         subscription_plan, max_users
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [collegeId, name, domain, address, contact_phone, contact_email, subscription_status, 
        subscription_plan, max_users]
     );
 
     // Get created college
-    const college = await db.get('SELECT * FROM colleges WHERE id = ?', [collegeId]);
+    const college = await db.get('SELECT * FROM colleges WHERE id = $1', [collegeId]);
 
     res.status(201).json({
       message: 'College created successfully',
@@ -716,7 +716,7 @@ router.put('/colleges/:collegeId', auth.authenticateToken, auth.authorizeRoles('
     } = req.body;
 
     // Check if college exists
-    const existingCollege = await db.get('SELECT id FROM colleges WHERE id = ?', [collegeId]);
+    const existingCollege = await db.get('SELECT id FROM colleges WHERE id = $1', [collegeId]);
     if (!existingCollege) {
       return res.status(404).json({
         error: 'College not found',
@@ -727,16 +727,16 @@ router.put('/colleges/:collegeId', auth.authenticateToken, auth.authorizeRoles('
     // Update college
     await db.run(
       `UPDATE colleges SET 
-        name = ?, domain = ?, address = ?, contact_phone = ?, contact_email = ?, 
-        subscription_status = ?, subscription_plan = ?, max_users = ?, 
+        name = $1, domain = $2, address = $3, contact_phone = $4, contact_email = $5, 
+        subscription_status = $6, subscription_plan = $7, max_users = $8, 
         updated_at = CURRENT_TIMESTAMP 
-        WHERE id = ?`,
+        WHERE id = $9`,
       [name, domain, address, contact_phone, contact_email, subscription_status, 
        subscription_plan, max_users, collegeId]
     );
 
     // Get updated college
-    const college = await db.get('SELECT * FROM colleges WHERE id = ?', [collegeId]);
+    const college = await db.get('SELECT * FROM colleges WHERE id = $1', [collegeId]);
 
     res.json({
       message: 'College updated successfully',
@@ -757,7 +757,7 @@ router.delete('/colleges/:collegeId', auth.authenticateToken, auth.authorizeRole
     const { collegeId } = req.params;
 
     // Check if college exists
-    const existingCollege = await db.get('SELECT id FROM colleges WHERE id = ?', [collegeId]);
+    const existingCollege = await db.get('SELECT id FROM colleges WHERE id = $1', [collegeId]);
     if (!existingCollege) {
       return res.status(404).json({
         error: 'College not found',
@@ -767,8 +767,8 @@ router.delete('/colleges/:collegeId', auth.authenticateToken, auth.authorizeRole
 
     // Soft delete - update subscription_status to 'inactive'
     await db.run(
-      'UPDATE colleges SET subscription_status = "inactive", updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [collegeId]
+      'UPDATE colleges SET subscription_status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      ['inactive', collegeId]
     );
 
     res.json({
@@ -1165,4 +1165,4 @@ router.get('/logs/export', auth.authenticateToken, auth.authorizeRoles('super_ad
   }
 });
 
-module.exports = router; 
+module.exports = router;

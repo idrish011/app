@@ -27,7 +27,7 @@ router.post('/courses', auth.authenticateToken, async (req, res) => {
 
     // Check if course code already exists in this college
     const existingCourse = await db.get(
-      'SELECT id FROM courses WHERE college_id = ? AND code = ?',
+      'SELECT id FROM courses WHERE college_id = $1 AND code = $2',
       [college_id, code]
     );
 
@@ -38,11 +38,11 @@ router.post('/courses', auth.authenticateToken, async (req, res) => {
     const courseId = uuidv4();
     await db.run(
       `INSERT INTO courses (id, college_id, name, code, description, credits, duration_months, fee_amount)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [courseId, college_id, name, code, description, credits, duration_months, fee_amount]
     );
 
-    const course = await db.get('SELECT * FROM courses WHERE id = ?', [courseId]);
+    const course = await db.get('SELECT * FROM courses WHERE id = $1', [courseId]);
     res.status(201).json({ message: 'Course created successfully', course });
   } catch (error) {
     console.error('Create course error:', error);

@@ -337,7 +337,17 @@ router.post('/login', auth.validateLogin, auth.checkValidationResult, async (req
     }
 
     // Verify password
-    console.log(`[Login] password_hash for user ${user.id}: ${user.password_hash}`);
+    if (!user.password_hash) {
+      console.error(`[Login] No password_hash found for user ${user.id}`);
+      return res.status(500).json({
+        error: 'Login failed',
+        message: 'User password not set. Please contact support.'
+      });
+    }
+    // Optionally, do not log password_hash in production
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[Login] password_hash for user ${user.id}: ${user.password_hash}`);
+    }
     const isValidPassword = await auth.comparePassword(password, user.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({

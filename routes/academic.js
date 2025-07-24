@@ -33,7 +33,7 @@ router.post('/courses',
 
       // Check if course code already exists in this college
       const existingCourse = await db.get(
-        'SELECT id FROM courses WHERE code = ? AND college_id = ?',
+        'SELECT id FROM courses WHERE code = $1 AND college_id = $2',
         [code, collegeId]
       );
       if (existingCourse) {
@@ -48,10 +48,10 @@ router.post('/courses',
       // Create course
       await db.run(`
         INSERT INTO courses (id, college_id, name, code, description, credits, duration_months, fee_amount)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `, [courseId, collegeId, name, code, description, credits, duration_months, fee_amount]);
 
-      const course = await db.get('SELECT * FROM courses WHERE id = ?', [courseId]);
+      const course = await db.get('SELECT * FROM courses WHERE id = $1', [courseId]);
 
       res.status(201).json({
         message: 'Course created successfully',

@@ -26,7 +26,7 @@ router.post('/',
       } = req.body;
 
       // Check if domain already exists
-      const existingCollege = await db.get('SELECT id FROM colleges WHERE domain = ?', [domain]);
+      const existingCollege = await db.get('SELECT id FROM colleges WHERE domain = $1', [domain]);
       if (existingCollege) {
         return res.status(409).json({
           error: 'Domain already exists',
@@ -41,10 +41,10 @@ router.post('/',
         INSERT INTO colleges (
           id, name, domain, logo_url, address, contact_email, 
           contact_phone, subscription_plan
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `, [collegeId, name, domain, logo_url, address, contact_email, contact_phone, subscription_plan]);
 
-      const college = await db.get('SELECT * FROM colleges WHERE id = ?', [collegeId]);
+      const college = await db.get('SELECT * FROM colleges WHERE id = $1', [collegeId]);
 
       res.status(201).json({
         message: 'College created successfully',

@@ -62,16 +62,16 @@ router.get('/contact-messages', auth.authenticateToken, auth.authorizeRoles('col
       SELECT cm.*, u.first_name, u.last_name, u.email as user_email
       FROM contact_messages cm
       LEFT JOIN users u ON cm.user_id = u.id
-      WHERE cm.college_id = ?
+      WHERE cm.college_id = $1
     `;
     const params = [collegeId];
 
     if (status !== 'all') {
-      query += ' AND cm.status = ?';
+      query += ' AND cm.status = $2';
       params.push(status);
     }
 
-    query += ' ORDER BY cm.created_at DESC LIMIT ? OFFSET ?';
+    query += ' ORDER BY cm.created_at DESC LIMIT $3 OFFSET $4';
     params.push(limit, offset);
 
     const messages = await db.all(query, params);

@@ -8,10 +8,10 @@ const db = new Database();
 router.get('/colleges/landing', async (req, res) => {
   try {
     const colleges = await db.all(`
-      SELECT c.*, GROUP_CONCAT(co.name) as courses
+      SELECT c.*, STRING_AGG(co.name, ',') as courses
       FROM colleges c
       LEFT JOIN courses co ON c.id = co.college_id
-      WHERE c.show_on_landing = 1
+      WHERE c.show_on_landing = TRUE
       GROUP BY c.id
       ORDER BY c.landing_order
     `);
@@ -41,10 +41,10 @@ router.get('/colleges/:collegeId', async (req, res) => {
     const { collegeId } = req.params;
 
     const college = await db.get(`
-      SELECT c.*, GROUP_CONCAT(co.name) as courses
+      SELECT c.*, STRING_AGG(co.name, ',') as courses
       FROM colleges c
       LEFT JOIN courses co ON c.id = co.college_id
-      WHERE c.id = ? AND c.show_on_landing = 1
+      WHERE c.id = $1 AND c.show_on_landing = TRUE
       GROUP BY c.id
     `, [collegeId]);
 
@@ -110,11 +110,10 @@ router.post('/admission-inquiry', async (req, res) => {
     }
 
     const inquiryId = require('uuid').v4();
-    
     await db.run(`
       INSERT INTO admission_inquiries (
         id, college_id, name, email, phone, message
-      ) VALUES (?, ?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, $3, $4, $5, $6)
     `, [inquiryId, college_id, name, email, phone, message]);
 
     res.status(201).json({
@@ -138,7 +137,7 @@ router.get('/colleges/:collegeId/contact', async (req, res) => {
     const college = await db.get(`
       SELECT id, name, contact_email, contact_phone, address
       FROM colleges 
-      WHERE id = ? AND show_on_landing = 1
+      WHERE id = $1 AND show_on_landing = TRUE
     `, [collegeId]);
 
     if (!college) {

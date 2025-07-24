@@ -37,7 +37,7 @@ router.post('/structures',
 
       // Verify course belongs to this college
       const course = await db.get(
-        'SELECT id FROM courses WHERE id = ? AND college_id = ?',
+        'SELECT id FROM courses WHERE id = $1 AND college_id = $2',
         [course_id, collegeId]
       );
       if (!course) {
@@ -49,7 +49,7 @@ router.post('/structures',
 
       // Verify academic year belongs to this college
       const academicYear = await db.get(
-        'SELECT id FROM academic_years WHERE id = ? AND college_id = ?',
+        'SELECT id FROM academic_years WHERE id = $1 AND college_id = $2',
         [academic_year_id, collegeId]
       );
       if (!academicYear) {
@@ -64,14 +64,14 @@ router.post('/structures',
       // Create fee structure
       await db.run(`
         INSERT INTO fee_structures (id, college_id, course_id, academic_year_id, fee_type, amount, due_date, is_optional)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `, [feeStructureId, collegeId, course_id, academic_year_id, fee_type, amount, due_date, is_optional]);
 
       // Assign this fee to all active students in the course for the academic year
       const students = await db.all(
         `SELECT u.id FROM users u
          JOIN admissions a ON u.id = a.student_id
-         WHERE u.college_id = ? AND u.role = 'student' AND u.status = 'active' AND a.course_id = ? AND a.academic_year_id = ?`,
+         WHERE u.college_id = $1 AND u.role = 'student' AND u.status = 'active' AND a.course_id = $2 AND a.academic_year_id = $3`,
         [collegeId, course_id, academic_year_id]
       );
       let assignedCount = 0;
@@ -80,8 +80,8 @@ router.post('/structures',
           const id = uuidv4();
           await db.run(
             `INSERT INTO student_fee_status (id, college_id, student_id, fee_structure_id, due_date, total_amount, amount_paid, status)
-             VALUES (?, ?, ?, ?, ?, ?, 0, 'due')`,
-            [id, collegeId, student.id, feeStructureId, due_date, amount]
+             VALUES ($1, $2, $3, $4, $5, $6, 0, 'due')`,
+            [id, CollegeId, student.id, feeStructureId, due_date, amount]
           );
           assignedCount++;
         } catch (err) {
@@ -94,7 +94,7 @@ router.post('/structures',
         FROM fee_structures fs
         JOIN courses c ON fs.course_id = c.id
         JOIN academic_years ay ON fs.academic_year_id = ay.id
-        WHERE fs.id = ?
+        WHERE fs.id = $1
       `, [feeStructureId]);
 
       // Send push notifications to students about new fee

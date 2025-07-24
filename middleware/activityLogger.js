@@ -1,14 +1,18 @@
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const path = require('path');
 
-const dbPath = path.join(__dirname, '..', 'campuslink.db');
+// Use the main app's DATABASE_URL for logging
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 // Helper function to get client IP address
 const getClientIP = (req) => {
-  return req.headers['x-forwarded-for'] || 
-         req.connection.remoteAddress || 
-         req.socket.remoteAddress ||
-         (req.connection.socket ? req.connection.socket.remoteAddress : null) ||
+  return req.headers['x-forwarded-for'] ||
+         req.connection?.remoteAddress ||
+         req.socket?.remoteAddress ||
+         (req.connection?.socket ? req.connection.socket.remoteAddress : null) ||
          'unknown';
 };
 
@@ -21,14 +25,12 @@ const getUserAgent = (req) => {
 const activityLogger = (action, entity = null, entityId = null, details = null) => {
   return (req, res, next) => {
     const originalSend = res.send;
-    
+
     res.send = function(data) {
       // Log the activity after the response is sent
-      const logActivity = () => {
-        const db = new sqlite3.Database(dbPath);
-        
+      const logActivity = async () => {
         const logData = {
-          user_id: req.user?.userId || 'anonymous',
+          user_id: req.user?.userId || req.user?.id || 'anonymous',
           user_email: req.user?.email || 'anonymous@campuslink.com',
           user_role: req.user?.role || 'anonymous',
           action: action,
@@ -42,39 +44,35 @@ const activityLogger = (action, entity = null, entityId = null, details = null) 
           }),
           ip_address: getClientIP(req),
           user_agent: getUserAgent(req),
-          college_id: req.user?.collegeId || 'system'
+          college_id: req.user?.collegeId || req.user?.college_id || 'system'
         };
 
         const query = `
           INSERT INTO activity_logs (
             user_id, user_email, user_role, action, entity, entity_id, 
             details, ip_address, user_agent, college_id
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         `;
 
-        db.run(query, [
-          logData.user_id,
-          logData.user_email,
-          logData.user_role,
-          logData.action,
-          logData.entity,
-          logData.entity_id,
-          logData.details,
-          logData.ip_address,
-          logData.user_agent,
-          logData.college_id
-        ], (err) => {
-          if (err) {
-            console.error('Error logging activity:', err);
-          }
-          db.close();
-        });
+        try {
+          await pool.query(query, [
+            logData.user_id,
+            logData.user_email,
+            logData.user_role,
+            logData.action,
+            logData.entity,
+            logData.entity_id,
+            logData.details,
+            logData.ip_address,
+            logData.user_agent,
+            logData.college_id
+          ]);
+        } catch (err) {
+          console.error('Error logging activity:', err);
+        }
       };
 
-      // Log the activity
       logActivity();
-      
-      // Call the original send method
       originalSend.call(this, data);
     };
 
@@ -178,4 +176,4 @@ const loggers = {
   }
 };
 
-module.exports = { activityLogger, loggers }; 
+module.exports = { activityLogger, loggers };
