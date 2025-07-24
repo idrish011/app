@@ -582,35 +582,41 @@ router.post('/generate-password', auth.authenticateToken, auth.authorizeRoles('s
 router.get('/colleges', auth.authenticateToken, auth.authorizeRoles('super_admin'), async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '', subscription_status = '' } = req.query;
-    const offset = (page - 1) * limit;
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const offset = (pageNum - 1) * limitNum;
 
-    let whereClause = 'WHERE 1=1';
     const params = [];
+    const whereConditions = [];
+    let paramIndex = 1;
 
     if (search) {
-      whereClause += ' AND (name LIKE ? OR domain LIKE ?)';
+      // Use ILIKE for case-insensitive search in PostgreSQL
+      whereConditions.push(`(name ILIKE $${paramIndex++} OR domain ILIKE $${paramIndex++})`);
       const searchTerm = `%${search}%`;
       params.push(searchTerm, searchTerm);
     }
 
     if (subscription_status) {
-      whereClause += ' AND subscription_status = ?';
+      whereConditions.push(`subscription_status = $${paramIndex++}`);
       params.push(subscription_status);
     }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
     // Get total count
     const countQuery = `SELECT COUNT(*) as total FROM colleges ${whereClause}`;
     const totalResult = await db.get(countQuery, params);
-    const total = totalResult.total;
+    const total = totalResult ? parseInt(totalResult.total, 10) : 0;
 
     // Get colleges with pagination
     const collegesQuery = `
       SELECT * FROM colleges 
       ${whereClause}
       ORDER BY created_at DESC 
-      LIMIT ? OFFSET ?
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `;
-    const colleges = await db.all(collegesQuery, [...params, limit, offset]);
+    const colleges = await db.all(collegesQuery, [...params, limitNum, offset]);
 
     // Set no-cache headers to prevent 304 responses
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -621,10 +627,10 @@ router.get('/colleges', auth.authenticateToken, auth.authorizeRoles('super_admin
     res.json({
       colleges,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / limitNum)
       }
     });
   } catch (error) {
