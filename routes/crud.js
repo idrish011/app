@@ -76,7 +76,7 @@ router.put('/courses/:id', auth.authenticateToken, async (req, res) => {
 
     // Check if course exists and belongs to college
     const existingCourse = await db.get(
-      'SELECT id FROM courses WHERE id = ? AND college_id = ?',
+      'SELECT id FROM courses WHERE id = $1 AND college_id = $2',
       [id, college_id]
     );
 
@@ -87,7 +87,7 @@ router.put('/courses/:id', auth.authenticateToken, async (req, res) => {
     // Check if code already exists (excluding current course)
     if (code) {
       const duplicateCode = await db.get(
-        'SELECT id FROM courses WHERE college_id = ? AND code = ? AND id != ?',
+        'SELECT id FROM courses WHERE college_id = $1 AND code = $2 AND id != $3',
         [college_id, code, id]
       );
 
@@ -98,13 +98,13 @@ router.put('/courses/:id', auth.authenticateToken, async (req, res) => {
 
     await db.run(
       `UPDATE courses 
-       SET name = ?, code = ?, description = ?, credits = ?, 
-           duration_months = ?, fee_amount = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
+       SET name = $1, code = $2, description = $3, credits = $4, 
+           duration_months = $5, fee_amount = $6, status = $7, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $8`,
       [name, code, description, credits, duration_months, fee_amount, status, id]
     );
 
-    const course = await db.get('SELECT * FROM courses WHERE id = ?', [id]);
+    const course = await db.get('SELECT * FROM courses WHERE id = $1', [id]);
     res.json({ message: 'Course updated successfully', course });
   } catch (error) {
     console.error('Update course error:', error);
@@ -120,7 +120,7 @@ router.delete('/courses/:id', auth.authenticateToken, async (req, res) => {
 
     // Check if course exists and belongs to college
     const existingCourse = await db.get(
-      'SELECT id FROM courses WHERE id = ? AND college_id = ?',
+      'SELECT id FROM courses WHERE id = $1 AND college_id = $2',
       [id, college_id]
     );
 
@@ -130,7 +130,7 @@ router.delete('/courses/:id', auth.authenticateToken, async (req, res) => {
 
     // Check if course has classes
     const hasClasses = await db.get(
-      'SELECT id FROM classes WHERE course_id = ? LIMIT 1',
+      'SELECT id FROM classes WHERE course_id = $1 LIMIT 1',
       [id]
     );
 
@@ -138,7 +138,7 @@ router.delete('/courses/:id', auth.authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Cannot delete course with existing classes' });
     }
 
-    await db.run('DELETE FROM courses WHERE id = ?', [id]);
+    await db.run('DELETE FROM courses WHERE id = $1', [id]);
     res.json({ message: 'Course deleted successfully' });
   } catch (error) {
     console.error('Delete course error:', error);
@@ -162,7 +162,7 @@ router.post('/classes', auth.authenticateToken, async (req, res) => {
 
     // Verify course belongs to college
     const course = await db.get(
-      'SELECT id FROM courses WHERE id = ? AND college_id = ?',
+      'SELECT id FROM courses WHERE id = $1 AND college_id = $2',
       [course_id, college_id]
     );
 
@@ -172,7 +172,7 @@ router.post('/classes', auth.authenticateToken, async (req, res) => {
 
     // Verify teacher belongs to college
     const teacher = await db.get(
-      'SELECT id FROM users WHERE id = ? AND college_id = ? AND role = "teacher"',
+      'SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = "teacher"',
       [teacher_id, college_id]
     );
 
@@ -183,11 +183,11 @@ router.post('/classes', auth.authenticateToken, async (req, res) => {
     const classId = uuidv4();
     await db.run(
       `INSERT INTO classes (id, college_id, course_id, semester_id, teacher_id, name, schedule, room_number, max_students)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
       [classId, college_id, course_id, semester_id, teacher_id, name, schedule, room_number, max_students]
     );
 
-    const classData = await db.get('SELECT * FROM classes WHERE id = ?', [classId]);
+    const classData = await db.get('SELECT * FROM classes WHERE id = $1', [classId]);
     res.status(201).json({ message: 'Class created successfully', class: classData });
   } catch (error) {
     console.error('Create class error:', error);
@@ -228,7 +228,7 @@ router.put('/classes/:id', auth.authenticateToken, async (req, res) => {
 
     // Check if class exists and belongs to college
     const existingClass = await db.get(
-      'SELECT id FROM classes WHERE id = ? AND college_id = ?',
+      'SELECT id FROM classes WHERE id = $1 AND college_id = $2',
       [id, college_id]
     );
 
@@ -238,13 +238,13 @@ router.put('/classes/:id', auth.authenticateToken, async (req, res) => {
 
     await db.run(
       `UPDATE classes 
-       SET course_id = ?, semester_id = ?, teacher_id = ?, name = ?, schedule = ?, 
-           room_number = ?, max_students = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
+       SET course_id = $1, semester_id = $2, teacher_id = $3, name = $4, schedule = $5, 
+           room_number = $6, max_students = $7, status = $8, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $9`,
       [course_id, semester_id, teacher_id, name, schedule, room_number, max_students, status, id]
     );
 
-    const classData = await db.get('SELECT * FROM classes WHERE id = ?', [id]);
+    const classData = await db.get('SELECT * FROM classes WHERE id = $1', [id]);
     res.json({ message: 'Class updated successfully', class: classData });
   } catch (error) {
     console.error('Update class error:', error);
@@ -260,7 +260,7 @@ router.delete('/classes/:id', auth.authenticateToken, async (req, res) => {
 
     // Check if class exists and belongs to college
     const existingClass = await db.get(
-      'SELECT id FROM classes WHERE id = ? AND college_id = ?',
+      'SELECT id FROM classes WHERE id = $1 AND college_id = $2',
       [id, college_id]
     );
 
@@ -270,7 +270,7 @@ router.delete('/classes/:id', auth.authenticateToken, async (req, res) => {
 
     // Check if class has enrollments
     const hasEnrollments = await db.get(
-      'SELECT id FROM class_enrollments WHERE class_id = ? LIMIT 1',
+      'SELECT id FROM class_enrollments WHERE class_id = $1 LIMIT 1',
       [id]
     );
 
@@ -278,7 +278,7 @@ router.delete('/classes/:id', auth.authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Cannot delete class with existing enrollments' });
     }
 
-    await db.run('DELETE FROM classes WHERE id = ?', [id]);
+    await db.run('DELETE FROM classes WHERE id = $1', [id]);
     res.json({ message: 'Class deleted successfully' });
   } catch (error) {
     console.error('Delete class error:', error);
@@ -292,7 +292,7 @@ router.delete('/classes/:id', auth.authenticateToken, async (req, res) => {
 router.post('/assignments', auth.authenticateToken, async (req, res) => {
   try {
     const { 
-      class_id, title, description, due_date, max_score, assignment_type 
+      class_id, title, description, due_date, total_marks, assignment_type 
     } = req.body;
     const { id: teacher_id, college_id } = req.user;
 
@@ -302,7 +302,7 @@ router.post('/assignments', auth.authenticateToken, async (req, res) => {
 
     // Verify class belongs to teacher and college
     const classData = await db.get(
-      'SELECT id FROM classes WHERE id = ? AND teacher_id = ? AND college_id = ?',
+      'SELECT id FROM classes WHERE id = $1 AND teacher_id = $2 AND college_id = $3',
       [class_id, teacher_id, college_id]
     );
 
@@ -312,12 +312,12 @@ router.post('/assignments', auth.authenticateToken, async (req, res) => {
 
     const assignmentId = uuidv4();
     await db.run(
-      `INSERT INTO assignments (id, class_id, title, description, due_date, max_score, assignment_type, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
-      [assignmentId, class_id, title, description, due_date, max_score, assignment_type]
+      `INSERT INTO assignments (id, class_id, title, description, due_date, total_marks, assignment_type, status, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', $8)`,
+      [assignmentId, class_id, title, description, due_date, total_marks, assignment_type, teacher_id]
     );
 
-    const assignment = await db.get('SELECT * FROM assignments WHERE id = ?', [assignmentId]);
+    const assignment = await db.get('SELECT * FROM assignments WHERE id = $1', [assignmentId]);
     res.status(201).json({ message: 'Assignment created successfully', assignment });
   } catch (error) {
     console.error('Create assignment error:', error);
@@ -349,32 +349,49 @@ router.get('/assignments', auth.authenticateToken, async (req, res) => {
 router.put('/assignments/:id', auth.authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
-      title, description, due_date, max_score, assignment_type, status 
-    } = req.body;
+    const updates = req.body;
     const { id: teacher_id } = req.user;
 
     // Check if assignment exists and belongs to teacher
     const existingAssignment = await db.get(
       `SELECT a.id FROM assignments a
        JOIN classes cl ON a.class_id = cl.id
-       WHERE a.id = ? AND cl.teacher_id = ?`,
+       WHERE a.id = $1 AND cl.teacher_id = $2`,
       [id, teacher_id]
     );
 
     if (!existingAssignment) {
-      return res.status(404).json({ error: 'Assignment not found' });
+      return res.status(404).json({ error: 'Assignment not found or access denied' });
     }
+
+    const updateFields = [];
+    const params = [];
+    let paramIndex = 1;
+
+    // Use total_marks to match schema instead of max_score
+    const allowedUpdates = ['title', 'description', 'due_date', 'total_marks', 'assignment_type', 'status'];
+    allowedUpdates.forEach(field => {
+      if (updates[field] !== undefined) {
+        updateFields.push(`${field} = $${paramIndex++}`);
+        params.push(updates[field]);
+      }
+    });
+
+    if (updateFields.length === 0) {
+      const assignment = await db.get('SELECT * FROM assignments WHERE id = $1', [id]);
+      return res.json({ message: 'No changes provided. Assignment not updated.', assignment });
+    }
+
+    params.push(id);
 
     await db.run(
       `UPDATE assignments 
-       SET title = ?, description = ?, due_date = ?, max_score = ?, 
-           assignment_type = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      [title, description, due_date, max_score, assignment_type, status, id]
+       SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $${paramIndex}`,
+      params
     );
 
-    const assignment = await db.get('SELECT * FROM assignments WHERE id = ?', [id]);
+    const assignment = await db.get('SELECT * FROM assignments WHERE id = $1', [id]);
     res.json({ message: 'Assignment updated successfully', assignment });
   } catch (error) {
     console.error('Update assignment error:', error);
@@ -392,16 +409,16 @@ router.delete('/assignments/:id', auth.authenticateToken, async (req, res) => {
     const existingAssignment = await db.get(
       `SELECT a.id FROM assignments a
        JOIN classes cl ON a.class_id = cl.id
-       WHERE a.id = ? AND cl.teacher_id = ?`,
+       WHERE a.id = $1 AND cl.teacher_id = $2`,
       [id, teacher_id]
     );
 
     if (!existingAssignment) {
-      return res.status(404).json({ error: 'Assignment not found' });
+      return res.status(404).json({ error: 'Assignment not found or access denied' });
     }
 
-    // Soft delete by setting status to deleted
-    await db.run('UPDATE assignments SET status = "deleted" WHERE id = ?', [id]);
+    // Soft delete by setting status to inactive
+    await db.run("UPDATE assignments SET status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [id]);
     res.json({ message: 'Assignment deleted successfully' });
   } catch (error) {
     console.error('Delete assignment error:', error);
@@ -423,12 +440,12 @@ router.post('/attendance', auth.authenticateToken, async (req, res) => {
 
     // Verify class belongs to teacher and get college_id
     const classData = await db.get(
-      'SELECT cl.id, cl.college_id FROM classes cl WHERE cl.id = ? AND cl.teacher_id = ?',
+      'SELECT cl.id, cl.college_id FROM classes cl WHERE cl.id = $1 AND cl.teacher_id = $2',
       [class_id, teacher_id]
     );
 
     if (!classData) {
-      return res.status(404).json({ error: 'Class not found' });
+      return res.status(404).json({ error: 'Class not found or access denied' });
     }
 
     // Import attendance validation
@@ -443,29 +460,35 @@ router.post('/attendance', auth.authenticateToken, async (req, res) => {
       });
     }
 
-    // Check if attendance already exists for this date and class
-    const existingAttendance = await db.get(
-      'SELECT id FROM attendance WHERE class_id = ? AND date = ? LIMIT 1',
-      [class_id, date]
-    );
+    // Use a transaction to ensure atomicity: delete old records and insert new ones.
+    await db.run('BEGIN TRANSACTION');
 
-    if (existingAttendance) {
-      return res.status(409).json({ error: 'Attendance already marked for this date' });
-    }
-
-    // Insert attendance records
-    for (const record of attendance_data) {
-      const { student_id, status, remarks } = record;
-      const attendanceId = uuidv4();
-      
+    try {
+      // Delete existing attendance for this class and date to allow updates/corrections.
       await db.run(
-        `INSERT INTO attendance (id, class_id, student_id, date, status, remarks)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [attendanceId, class_id, student_id, date, status, remarks]
+        'DELETE FROM attendance WHERE class_id = $1 AND date = $2',
+        [class_id, date]
       );
-    }
 
-    res.status(201).json({ message: 'Attendance marked successfully' });
+      // Insert new attendance records
+      for (const record of attendance_data) {
+        const { student_id, status, remarks } = record;
+        if (student_id && status) { // Ensure essential data is present
+          const attendanceId = uuidv4();
+          await db.run(
+            `INSERT INTO attendance (id, class_id, student_id, date, status, remarks, marked_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [attendanceId, class_id, student_id, date, status, remarks || '', teacher_id]
+          );
+        }
+      }
+
+      await db.run('COMMIT');
+      res.status(201).json({ message: 'Attendance marked successfully' });
+    } catch (transactionError) {
+      await db.run('ROLLBACK');
+      throw transactionError; // Re-throw to be caught by the outer catch block
+    }
   } catch (error) {
     console.error('Mark attendance error:', error);
     res.status(500).json({ error: 'Failed to mark attendance' });
@@ -480,19 +503,19 @@ router.get('/attendance/:class_id', auth.authenticateToken, async (req, res) => 
 
     // Verify class belongs to teacher
     const classData = await db.get(
-      'SELECT id FROM classes WHERE id = ? AND teacher_id = ?',
+      'SELECT id FROM classes WHERE id = $1 AND teacher_id = $2',
       [class_id, teacher_id]
     );
 
     if (!classData) {
-      return res.status(404).json({ error: 'Class not found' });
+      return res.status(404).json({ error: 'Class not found or access denied' });
     }
 
     const attendance = await db.all(`
       SELECT a.*, s.first_name, s.last_name, s.email
       FROM attendance a
       JOIN users s ON a.student_id = s.id
-      WHERE a.class_id = ?
+      WHERE a.class_id = $1
       ORDER BY a.date DESC, s.first_name, s.last_name
     `, [class_id]);
 
@@ -514,22 +537,22 @@ router.put('/attendance/:id', auth.authenticateToken, async (req, res) => {
     const existingAttendance = await db.get(
       `SELECT a.id FROM attendance a
        JOIN classes cl ON a.class_id = cl.id
-       WHERE a.id = ? AND cl.teacher_id = ?`,
+       WHERE a.id = $1 AND cl.teacher_id = $2`,
       [id, teacher_id]
     );
 
     if (!existingAttendance) {
-      return res.status(404).json({ error: 'Attendance record not found' });
+      return res.status(404).json({ error: 'Attendance record not found or access denied' });
     }
 
     await db.run(
       `UPDATE attendance 
-       SET status = ?, remarks = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
+       SET status = $1, remarks = $2
+       WHERE id = $3`,
       [status, remarks, id]
     );
 
-    const attendance = await db.get('SELECT * FROM attendance WHERE id = ?', [id]);
+    const attendance = await db.get('SELECT * FROM attendance WHERE id = $1', [id]);
     res.json({ message: 'Attendance updated successfully', attendance });
   } catch (error) {
     console.error('Update attendance error:', error);
@@ -555,17 +578,17 @@ router.post('/grades', auth.authenticateToken, async (req, res) => {
     const assignment = await db.get(
       `SELECT a.id FROM assignments a
        JOIN classes cl ON a.class_id = cl.id
-       WHERE a.id = ? AND cl.teacher_id = ?`,
+       WHERE a.id = $1 AND cl.teacher_id = $2`,
       [assignment_id, teacher_id]
     );
 
     if (!assignment) {
-      return res.status(404).json({ error: 'Assignment not found' });
+      return res.status(404).json({ error: 'Assignment not found or access denied' });
     }
 
     // Check if grade already exists
     const existingGrade = await db.get(
-      'SELECT id FROM grades WHERE assignment_id = ? AND student_id = ?',
+      'SELECT id FROM grades WHERE assignment_id = $1 AND student_id = $2',
       [assignment_id, student_id]
     );
 
@@ -576,11 +599,11 @@ router.post('/grades', auth.authenticateToken, async (req, res) => {
     const gradeId = uuidv4();
     await db.run(
       `INSERT INTO grades (id, assignment_id, student_id, grade_percentage, grade_letter, feedback, status)
-       VALUES (?, ?, ?, ?, ?, ?, 'active')`,
+       VALUES ($1, $2, $3, $4, $5, $6, 'active')`,
       [gradeId, assignment_id, student_id, grade_percentage, grade_letter, feedback]
     );
 
-    const grade = await db.get('SELECT * FROM grades WHERE id = ?', [gradeId]);
+    const grade = await db.get('SELECT * FROM grades WHERE id = $1', [gradeId]);
     res.status(201).json({ message: 'Grade submitted successfully', grade });
   } catch (error) {
     console.error('Submit grade error:', error);
@@ -598,19 +621,19 @@ router.get('/grades/assignment/:assignment_id', auth.authenticateToken, async (r
     const assignment = await db.get(
       `SELECT a.id FROM assignments a
        JOIN classes cl ON a.class_id = cl.id
-       WHERE a.id = ? AND cl.teacher_id = ?`,
+       WHERE a.id = $1 AND cl.teacher_id = $2`,
       [assignment_id, teacher_id]
     );
 
     if (!assignment) {
-      return res.status(404).json({ error: 'Assignment not found' });
+      return res.status(404).json({ error: 'Assignment not found or access denied' });
     }
 
     const grades = await db.all(`
       SELECT g.*, s.first_name, s.last_name, s.email
       FROM grades g
       JOIN users s ON g.student_id = s.id
-      WHERE g.assignment_id = ? AND g.status != 'deleted'
+      WHERE g.assignment_id = $1 AND g.status != 'deleted'
       ORDER BY s.first_name, s.last_name
     `, [assignment_id]);
 
@@ -625,7 +648,7 @@ router.get('/grades/assignment/:assignment_id', auth.authenticateToken, async (r
 router.put('/grades/:id', auth.authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { grade_percentage, grade_letter, feedback } = req.body;
+    const updates = req.body;
     const { id: teacher_id } = req.user;
 
     // Check if grade exists and belongs to teacher's assignment
@@ -633,22 +656,40 @@ router.put('/grades/:id', auth.authenticateToken, async (req, res) => {
       `SELECT g.id FROM grades g
        JOIN assignments a ON g.assignment_id = a.id
        JOIN classes cl ON a.class_id = cl.id
-       WHERE g.id = ? AND cl.teacher_id = ?`,
+       WHERE g.id = $1 AND cl.teacher_id = $2`,
       [id, teacher_id]
     );
 
     if (!existingGrade) {
-      return res.status(404).json({ error: 'Grade not found' });
+      return res.status(404).json({ error: 'Grade not found or access denied' });
     }
 
+    const updateFields = [];
+    const params = [];
+    let paramIndex = 1;
+
+    const allowedUpdates = ['grade_percentage', 'grade_letter', 'feedback'];
+    allowedUpdates.forEach(field => {
+      if (updates[field] !== undefined) {
+        updateFields.push(`${field} = $${paramIndex++}`);
+        params.push(updates[field]);
+      }
+    });
+
+    if (updateFields.length === 0) {
+      const grade = await db.get('SELECT * FROM grades WHERE id = $1', [id]);
+      return res.json({ message: 'No changes provided. Grade not updated.', grade });
+    }
+
+    params.push(id);
     await db.run(
       `UPDATE grades 
-       SET grade_percentage = ?, grade_letter = ?, feedback = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      [grade_percentage, grade_letter, feedback, id]
+       SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $${paramIndex}`,
+      params
     );
 
-    const grade = await db.get('SELECT * FROM grades WHERE id = ?', [id]);
+    const grade = await db.get('SELECT * FROM grades WHERE id = $1', [id]);
     res.json({ message: 'Grade updated successfully', grade });
   } catch (error) {
     console.error('Update grade error:', error);
@@ -672,7 +713,7 @@ router.post('/fee-structures', auth.authenticateToken, async (req, res) => {
 
     // Verify course belongs to college
     const course = await db.get(
-      'SELECT id FROM courses WHERE id = ? AND college_id = ?',
+      'SELECT id FROM courses WHERE id = $1 AND college_id = $2',
       [course_id, college_id]
     );
 
@@ -683,11 +724,11 @@ router.post('/fee-structures', auth.authenticateToken, async (req, res) => {
     const feeStructureId = uuidv4();
     await db.run(
       `INSERT INTO fee_structures (id, college_id, course_id, academic_year_id, fee_type, amount, due_date, is_optional)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6,$7,$8)`,
       [feeStructureId, college_id, course_id, academic_year_id, fee_type, amount, due_date, is_optional]
     );
 
-    const feeStructure = await db.get('SELECT * FROM fee_structures WHERE id = ?', [feeStructureId]);
+    const feeStructure = await db.get('SELECT * FROM fee_structures WHERE id = $1', [feeStructureId]);
     res.status(201).json({ message: 'Fee structure created successfully', feeStructure });
   } catch (error) {
     console.error('Create fee structure error:', error);
@@ -704,7 +745,7 @@ router.get('/fee-structures', auth.authenticateToken, async (req, res) => {
       FROM fee_structures fs
       JOIN courses c ON fs.course_id = c.id
       JOIN academic_years ay ON fs.academic_year_id = ay.id
-      WHERE fs.college_id = ?
+      WHERE fs.college_id = $1
       ORDER BY fs.fee_type, fs.due_date
     `, [college_id]);
 
@@ -726,7 +767,7 @@ router.put('/fee-structures/:id', auth.authenticateToken, async (req, res) => {
 
     // Check if fee structure exists and belongs to college
     const existingFeeStructure = await db.get(
-      'SELECT id FROM fee_structures WHERE id = ? AND college_id = ?',
+      'SELECT id FROM fee_structures WHERE id = $1 AND college_id = $2',
       [id, college_id]
     );
 
@@ -736,12 +777,12 @@ router.put('/fee-structures/:id', auth.authenticateToken, async (req, res) => {
 
     await db.run(
       `UPDATE fee_structures 
-       SET course_id = ?, academic_year_id = ?, fee_type = ?, amount = ?, due_date = ?, is_optional = ?
-       WHERE id = ?`,
+       SET course_id = $1, academic_year_id = $2, fee_type = $3, amount = $4, due_date = $5, is_optional = $6
+       WHERE id =  $7`,
       [course_id, academic_year_id, fee_type, amount, due_date, is_optional, id]
     );
 
-    const feeStructure = await db.get('SELECT * FROM fee_structures WHERE id = ?', [id]);
+    const feeStructure = await db.get('SELECT * FROM fee_structures WHERE id = $1', [id]);
     res.json({ message: 'Fee structure updated successfully', feeStructure });
   } catch (error) {
     console.error('Update fee structure error:', error);
@@ -757,7 +798,7 @@ router.delete('/fee-structures/:id', auth.authenticateToken, async (req, res) =>
 
     // Check if fee structure exists and belongs to college
     const existingFeeStructure = await db.get(
-      'SELECT id FROM fee_structures WHERE id = ? AND college_id = ?',
+      'SELECT id FROM fee_structures WHERE id = $1 AND college_id = $2',
       [id, college_id]
     );
 
@@ -767,7 +808,7 @@ router.delete('/fee-structures/:id', auth.authenticateToken, async (req, res) =>
 
     // Check if fee structure has collections
     const hasCollections = await db.get(
-      'SELECT id FROM fee_collections WHERE fee_structure_id = ? LIMIT 1',
+      'SELECT id FROM fee_collections WHERE fee_structure_id = $1 LIMIT 1',
       [id]
     );
 
@@ -775,7 +816,7 @@ router.delete('/fee-structures/:id', auth.authenticateToken, async (req, res) =>
       return res.status(400).json({ error: 'Cannot delete fee structure with existing collections' });
     }
 
-    await db.run('DELETE FROM fee_structures WHERE id = ?', [id]);
+    await db.run('DELETE FROM fee_structures WHERE id = $1', [id]);
     res.json({ message: 'Fee structure deleted successfully' });
   } catch (error) {
     console.error('Delete fee structure error:', error);

@@ -129,7 +129,7 @@ router.get('/:collegeId',
         FROM colleges c
         LEFT JOIN users u ON c.id = u.college_id
         LEFT JOIN courses co ON c.id = co.college_id
-        WHERE c.id = ?
+        WHERE c.id = $1
         GROUP BY c.id
       `, [collegeId]);
 
@@ -172,7 +172,7 @@ router.put('/:collegeId',
       } = req.body;
 
       // Check if college exists
-      const existingCollege = await db.get('SELECT id FROM colleges WHERE id = ?', [collegeId]);
+      const existingCollege = await db.get('SELECT id FROM colleges WHERE id = $1', [collegeId]);
       if (!existingCollege) {
         return res.status(404).json({
           error: 'College not found',
@@ -183,12 +183,12 @@ router.put('/:collegeId',
       // Update college
       await db.run(`
         UPDATE colleges 
-        SET name = ?, logo_url = ?, address = ?, contact_email = ?, 
-            contact_phone = ?, subscription_plan = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
+        SET name = ?, logo_url = $1, address = $2, contact_email = $3, 
+            contact_phone = $4, subscription_plan = $5, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $6
       `, [name, logo_url, address, contact_email, contact_phone, subscription_plan, collegeId]);
 
-      const updatedCollege = await db.get('SELECT * FROM colleges WHERE id = ?', [collegeId]);
+      const updatedCollege = await db.get('SELECT * FROM colleges WHERE id = $1', [collegeId]);
 
       res.json({
         message: 'College updated successfully',
@@ -213,7 +213,7 @@ router.delete('/:collegeId',
       const { collegeId } = req.params;
 
       // Check if college exists
-      const college = await db.get('SELECT id FROM colleges WHERE id = ?', [collegeId]);
+      const college = await db.get('SELECT id FROM colleges WHERE id = $1', [collegeId]);
       if (!college) {
         return res.status(404).json({
           error: 'College not found',
@@ -222,7 +222,7 @@ router.delete('/:collegeId',
       }
 
       // Check if college has users
-      const userCount = await db.get('SELECT COUNT(*) as count FROM users WHERE college_id = ?', [collegeId]);
+      const userCount = await db.get('SELECT COUNT(*) as count FROM users WHERE college_id = $1', [collegeId]);
       if (userCount.count > 0) {
         return res.status(400).json({
           error: 'Cannot delete college',
@@ -231,7 +231,7 @@ router.delete('/:collegeId',
       }
 
       // Delete college
-      await db.run('DELETE FROM colleges WHERE id = ?', [collegeId]);
+      await db.run('DELETE FROM colleges WHERE id = $1', [collegeId]);
 
       res.json({
         message: 'College deleted successfully'
@@ -266,7 +266,7 @@ router.post('/:collegeId/departments',
 
       // Check if department code already exists in this college
       const existingDept = await db.get(
-        'SELECT id FROM departments WHERE code = ? AND college_id = ?',
+        'SELECT id FROM departments WHERE code = $1 AND college_id = $2',
         [code, collegeId]
       );
       if (existingDept) {
@@ -281,10 +281,10 @@ router.post('/:collegeId/departments',
       // Create department
       await db.run(`
         INSERT INTO departments (id, college_id, name, code, description, head_teacher_id)
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5, $6)
       `, [departmentId, collegeId, name, code, description, head_teacher_id]);
 
-      const department = await db.get('SELECT * FROM departments WHERE id = ?', [departmentId]);
+      const department = await db.get('SELECT * FROM departments WHERE id = $1', [departmentId]);
 
       res.status(201).json({
         message: 'Department created successfully',
@@ -314,7 +314,7 @@ router.get('/:collegeId/departments',
         FROM departments d
         LEFT JOIN users u ON d.head_teacher_id = u.id
         LEFT JOIN courses c ON d.id = c.department_id
-        WHERE d.college_id = ?
+        WHERE d.college_id = $1
         GROUP BY d.id
         ORDER BY d.name
       `, [collegeId]);
@@ -364,10 +364,10 @@ router.post('/:collegeId/academic-years',
       // Create academic year
       await db.run(`
         INSERT INTO academic_years (id, college_id, name, start_date, end_date)
-        VALUES (?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5)
       `, [academicYearId, collegeId, name, start_date, end_date]);
 
-      const academicYear = await db.get('SELECT * FROM academic_years WHERE id = ?', [academicYearId]);
+      const academicYear = await db.get('SELECT * FROM academic_years WHERE id = $1', [academicYearId]);
 
       res.status(201).json({
         message: 'Academic year created successfully',
@@ -395,7 +395,7 @@ router.get('/:collegeId/academic-years',
         SELECT ay.*, COUNT(s.id) as semester_count
         FROM academic_years ay
         LEFT JOIN semesters s ON ay.id = s.academic_year_id
-        WHERE ay.college_id = ?
+        WHERE ay.college_id = $1
         GROUP BY ay.id
         ORDER BY ay.start_date DESC
       `, [collegeId]);
@@ -425,13 +425,13 @@ router.get('/:collegeId/stats',
       // Get various statistics
       const stats = await db.get(`
         SELECT 
-          (SELECT COUNT(*) FROM users WHERE college_id = ? AND role = 'student') as student_count,
-          (SELECT COUNT(*) FROM users WHERE college_id = ? AND role = 'teacher') as teacher_count,
-          (SELECT COUNT(*) FROM users WHERE college_id = ? AND role = 'parent') as parent_count,
-          (SELECT COUNT(*) FROM courses WHERE college_id = ?) as course_count,
-          (SELECT COUNT(*) FROM classes WHERE college_id = ?) as class_count,
-          (SELECT COUNT(*) FROM academic_years WHERE college_id = ? AND status = 'active') as active_academic_years
-      `, [collegeId, collegeId, collegeId, collegeId, collegeId, collegeId, collegeId]);
+          (SELECT COUNT(*) FROM users WHERE college_id = $1 AND role = 'student') as student_count,
+          (SELECT COUNT(*) FROM users WHERE college_id = $2 AND role = 'teacher') as teacher_count,
+          (SELECT COUNT(*) FROM users WHERE college_id = $3 AND role = 'parent') as parent_count,
+          (SELECT COUNT(*) FROM courses WHERE college_id = $4) as course_count,
+          (SELECT COUNT(*) FROM classes WHERE college_id = $5) as class_count,
+          (SELECT COUNT(*) FROM academic_years WHERE college_id = $6 AND status = 'active') as active_academic_years
+      `, [collegeId, collegeId, collegeId, collegeId, collegeId, collegeId]);
 
       res.json({
         message: 'College statistics retrieved successfully',
@@ -459,7 +459,7 @@ router.patch('/:collegeId/landing',
       const { show_on_landing, landing_order } = req.body;
       
       // Check if college exists
-      const college = await db.get('SELECT * FROM colleges WHERE id = ?', [collegeId]);
+      const college = await db.get('SELECT * FROM colleges WHERE id = $1', [collegeId]);
       if (!college) {
         console.log('College not found:', collegeId);
         return res.status(404).json({ error: 'College not found' });
@@ -467,10 +467,10 @@ router.patch('/:collegeId/landing',
       
       console.log('Updating college landing settings:', { collegeId, show_on_landing, landing_order });
       await db.run(`
-        UPDATE colleges SET show_on_landing = ?, landing_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+        UPDATE colleges SET show_on_landing = $1, landing_order = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3
       `, [show_on_landing ? 1 : 0, landing_order || 0, collegeId]);
       
-      const updated = await db.get('SELECT * FROM colleges WHERE id = ?', [collegeId]);
+      const updated = await db.get('SELECT * FROM colleges WHERE id = $1', [collegeId]);
       console.log('College updated successfully:', updated);
       res.json({ message: 'Landing display updated', college: updated });
     } catch (error) {

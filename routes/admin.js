@@ -49,14 +49,15 @@ router.get('/dashboard/stats', auth.authenticateToken, loggers.dashboardAccess, 
           (SELECT COUNT(*) FROM users WHERE role = 'student') as total_students,
           (SELECT COUNT(*) FROM users WHERE role = 'parent') as total_parents,
           (SELECT COUNT(*) FROM courses WHERE status = 'active') as total_courses,
-          (SELECT IFNULL(SUM(amount_paid), 0) FROM fee_collections WHERE status = 'paid') as total_revenue
+          (SELECT COALESCE(SUM(amount_paid), 0) FROM fee_collections WHERE status = 'paid') as total_revenue
       `);
 
       // Fetch recent activity logs (all roles)
       recentActivity = await db.all(`
-        SELECT id, timestamp, user_email, user_role, action, entity, entity_id, details
-        FROM activity_logs
-        ORDER BY timestamp DESC
+        SELECT l.id, l.created_at as timestamp, u.email as user_email, u.role as user_role, l.action, l.entity, l.entity_id, l.details
+        FROM activity_logs l
+        LEFT JOIN users u ON l.user_id = u.id
+        ORDER BY l.created_at DESC
         LIMIT 10
       `);
     } else if (user.role === 'college_admin') {
@@ -66,21 +67,21 @@ router.get('/dashboard/stats', auth.authenticateToken, loggers.dashboardAccess, 
       }
       stats = await db.get(`
         SELECT 
-          (SELECT COUNT(*) FROM users WHERE college_id = ? AND role = 'student') as total_students,
-          (SELECT COUNT(*) FROM users WHERE college_id = ? AND role = 'teacher') as total_teachers,
-          (SELECT COUNT(*) FROM courses WHERE college_id = ? AND status = 'active') as total_courses,
-          (SELECT COUNT(*) FROM users WHERE college_id = ? AND role = 'student' AND status = 'active') as active_students,
-          (SELECT COUNT(*) FROM admissions WHERE college_id = ? AND status = 'pending') as pending_admissions,
-          (SELECT IFNULL(SUM(amount_paid), 0) FROM fee_collections fc 
+          (SELECT COUNT(*) FROM users WHERE college_id = $1 AND role = 'student') as total_students,
+          (SELECT COUNT(*) FROM users WHERE college_id = $2 AND role = 'teacher') as total_teachers,
+          (SELECT COUNT(*) FROM courses WHERE college_id = $3 AND status = 'active') as total_courses,
+          (SELECT COUNT(*) FROM users WHERE college_id = $4 AND role = 'student' AND status = 'active') as active_students,
+          (SELECT COUNT(*) FROM admissions WHERE college_id = $5 AND status = 'pending') as pending_admissions,
+          (SELECT COALESCE(SUM(amount_paid), 0) FROM fee_collections fc 
            JOIN fee_structures fs ON fc.fee_structure_id = fs.id 
            JOIN courses c ON fs.course_id = c.id 
-           WHERE c.college_id = ? AND fc.status = 'paid') as total_revenue,
-          (SELECT IFNULL(AVG(attendance_percentage), 0) FROM (
+           WHERE c.college_id = $6 AND fc.status = 'paid') as total_revenue,
+          (SELECT COALESCE(AVG(attendance_percentage), 0) FROM (
             SELECT AVG(CASE WHEN status = 'present' THEN 100 ELSE 0 END) as attendance_percentage
             FROM attendance a
             JOIN classes cl ON a.class_id = cl.id
             JOIN courses c ON cl.course_id = c.id
-            WHERE c.college_id = ? AND a.date >= date('now', '-30 days')
+            WHERE c.college_id = $7 AND a.date >= NOW() - interval '30 days'
             GROUP BY a.student_id
           )) as attendance_rate
       `, [
