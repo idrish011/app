@@ -34,7 +34,7 @@ const SecurityMiddleware = require('./middleware/security');
 const Database = require('./models/database');
 
 // Load environment variables
-dotenv.config();
+require('dotenv').config();
 
 const app = express();
 app.set('trust proxy', 1);
@@ -67,47 +67,22 @@ const auth = new AuthMiddleware();
     // Ensure all tables are created before any queries
     await db.initializeTables();
 
-    // Wait for tables to be ready before checking/creating super admin
-    const usersTable = await db.get(
-      `SELECT to_regclass('public.users') as exists`
-    );
-    if (!usersTable || !usersTable.exists) {
-      throw new Error('Users table was not created. Check your database connection and schema.');
-    }
-
-    // --- Super Admin Auto-Creation Logic ---
-    const existingAdmin = await db.get('SELECT id FROM users WHERE email = $1', ['admin@campuslink.com']);
-    if (!existingAdmin) {
-      const userId = uuidv4();
-      const passwordHash = await auth.hashPassword('admin123');
-      await db.run(
-        `INSERT INTO users (
-          id, college_id, username, email, password_hash, first_name, last_name, 
-          role, phone, date_of_birth, gender, address, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-        [
-          userId,
-          null,
-          'admin',
-          'admin@campuslink.com',
-          passwordHash,
-          'Super',
-          'Admin',
-          'super_admin',
-          null,
-          null,
-          null,
-          null,
-          'active'
-        ]
-      );
-      console.log('Default super admin created: admin@campuslink.com / admin123');
-    } else {
-      console.log('Default super admin already exists');
-    }
+    // Wait for tables to be ready before continuing
+    // Remove the to_regclass check, as it can cause issues if run before types/tables are ready
+    // If you want to check table existence, do it inside initializeTables() in a safe, idempotent way
   } catch (error) {
-    console.error('Error during startup:', error);
-    process.exit(1); // Exit if tables are not created or admin cannot be created
+    // Improved error logging for duplicate key/constraint errors
+    if (
+      typeof error.message === 'string' &&
+      error.message.includes('duplicate key value violates unique constraint')
+    ) {
+      console.error('Database schema error: Duplicate key or type detected. This usually means your migrations or table creation scripts are running multiple times or there is a type/constraint conflict.');
+      console.error('Detail:', error.message);
+      console.error('Check your table/type creation logic in models/database.js and ensure it is idempotent.');
+    } else {
+      console.error('Error during startup:', error);
+    }
+    process.exit(1); // Exit if tables are not created
   }
 })();
 
@@ -375,46 +350,48 @@ process.on('uncaughtException', (err) => {
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
+  logger.error('Unhandled Rejection at:', {
+    promise,
+    reason: reason instanceof Error ? reason.stack : reason
+  });
+  // Optionally, do not exit immediately in development:
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  } else {
+    console.error('Unhandled promise rejection (not exiting in development):', reason);
+  }
 });
 
-// Utility: Generate password hash for manual admin creation
-if (process.argv.includes('--hash-admin-password')) {
-  const password = process.argv[process.argv.indexOf('--hash-admin-password') + 1];
-  if (!password) {
-    console.error('Usage: node index.js --hash-admin-password <password>');
-    process.exit(1);
+// Only start the server (no password hash CLI check needed)
+app.listen(PORT, async () => {
+  console.log(`🚀 CampusLink API server running on port ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔒 Security: ${isProduction ? 'Production mode' : 'Development mode'}`);
+  if (isProduction) {
+    console.log('✅ Rate limiting enabled');
+    console.log('✅ Security headers enabled');
+    console.log('✅ Input validation enabled');
   }
-  bcrypt.hash(password, 12).then(hash => {
-    console.log(`Password hash for "${password}":\n${hash}`);
-    process.exit(0);
-  });
-}
+  try {
+    // Show which database URL is being used for easier debugging
+    console.log(`🔗 DATABASE_URL: ${process.env.DATABASE_URL}`);
+    // Test Neon/Postgres DB connection
+    await db.pool.query('SELECT 1');
+    console.log('🟢 Neon/Postgres DB connection is ready');
+  } catch (err) {
+    console.error('🔴 Neon/Postgres DB connection failed:', err.message);
+    console.error('Check that your DATABASE_URL is correct and that your database is running and accessible.');
+  }
 
-// Only start the server if not running the hash utility
-if (!process.argv.includes('--hash-admin-password')) {
-  app.listen(PORT, async () => {
-    
-    console.log(`🚀 CampusLink API server running on port ${PORT}`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔒 Security: ${isProduction ? 'Production mode' : 'Development mode'}`);
-    if (isProduction) {
-      console.log('✅ Rate limiting enabled');
-      console.log('✅ Security headers enabled');
-      console.log('✅ Input validation enabled');
-    }
-   
+  // Prevent server sleep: ping /api/health every 10 minutes
+  setInterval(() => {
+    const http = require('http');
+    const url = `http://localhost:${PORT}/api/health`;
+    http.get(url, (res) => {
+      console.log(`[KeepAlive] Pinged /api/health - Status: ${res.statusCode}`);
+    }).on('error', (err) => {
+      console.error('[KeepAlive] Error pinging /api/health:', err.message);
+    });
+  }, 10 * 60 * 1000); // 10 minutes
+});
 
-    // Prevent server sleep: ping /api/health every 10 minutes
-    setInterval(() => {
-      const http = require('http');
-      const url = `http://localhost:${PORT}/api/health`;
-      http.get(url, (res) => {
-        console.log(`[KeepAlive] Pinged /api/health - Status: ${res.statusCode}`);
-      }).on('error', (err) => {
-        console.error('[KeepAlive] Error pinging /api/health:', err.message);
-      });
-    }, 10 * 60 * 1000); // 10 minutes
-  });
-}

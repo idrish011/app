@@ -2,13 +2,12 @@ const { Pool } = require('pg');
 const path = require('path');
 
 class Database {
-  //psql 'postgresql://neondb_owner:npg_5jDmyEF4cPul@ep-holy-lab-a1gq3lv4-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
   constructor() {
     this.pool = new Pool({
-      connectionString: process.env.DATABASE_URL, // Neon provides this as a single URL
+      connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false }
     });
-    this.initializeTables();
+    // Do not call initializeTables() in constructor; call it only once on startup
   }
 
   async initializeTables() {
