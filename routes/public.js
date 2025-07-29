@@ -1,5 +1,6 @@
 const express = require('express');
 const Database = require('../models/database');
+const { v4: uuidv4 } = require('uuid');
 
 const router = express.Router();
 const db = new Database();
@@ -8,20 +9,20 @@ const db = new Database();
 router.get('/colleges/landing', async (req, res) => {
   try {
     const colleges = await db.all(`
-      SELECT c.*, STRING_AGG(co.name, ',') as courses
+      SELECT c.*, ARRAY_AGG(co.name) FILTER (WHERE co.name IS NOT NULL) as courses
       FROM colleges c
       LEFT JOIN courses co ON c.id = co.college_id
       WHERE c.show_on_landing = TRUE
       GROUP BY c.id
       ORDER BY c.landing_order
     `);
-    
-    // Parse courses as array
+
+    // The 'courses' property is now an array directly from the DB
     const result = colleges.map(college => ({
       ...college,
-      courses: college.courses ? college.courses.split(',') : []
+      courses: college.courses || [] // Ensure it's an array, even if null
     }));
-    
+
     res.json({
       message: 'Landing colleges fetched successfully',
       colleges: result
@@ -41,7 +42,7 @@ router.get('/colleges/:collegeId', async (req, res) => {
     const { collegeId } = req.params;
 
     const college = await db.get(`
-      SELECT c.*, STRING_AGG(co.name, ',') as courses
+      SELECT c.*, ARRAY_AGG(co.name) FILTER (WHERE co.name IS NOT NULL) as courses
       FROM colleges c
       LEFT JOIN courses co ON c.id = co.college_id
       WHERE c.id = $1 AND c.show_on_landing = TRUE
@@ -55,10 +56,10 @@ router.get('/colleges/:collegeId', async (req, res) => {
       });
     }
 
-    // Parse courses as array
+    // The 'courses' property is now an array directly from the DB
     const result = {
       ...college,
-      courses: college.courses ? college.courses.split(',') : []
+      courses: college.courses || [] // Ensure it's an array, even if null
     };
 
     res.json({
@@ -109,7 +110,7 @@ router.post('/admission-inquiry', async (req, res) => {
       });
     }
 
-    const inquiryId = require('uuid').v4();
+    const inquiryId = uuidv4();
     await db.run(`
       INSERT INTO admission_inquiries (
         id, college_id, name, email, phone, message
