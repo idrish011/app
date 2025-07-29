@@ -111,34 +111,32 @@ app.use(helmet({
   }
 }));
 
-// CORS configuration with security
-app.use(cors({
+// Define CORS options in one place
+const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
-    if (!origin) return callback(null, true);
-
-    // Normalize localhost origins for dev (handle port differences)
-    const normalizedOrigin = origin.replace(/\/\/localhost:\d+/, '//localhost');
-    const allowedOrigins = ALLOWED_ORIGINS.map(o => o.replace(/\/\/localhost:\d+/, '//localhost'));
-
-    if (
-      ALLOWED_ORIGINS.includes(origin) ||
-      allowedOrigins.includes(normalizedOrigin)
-    ) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    // Allow requests with no origin (like mobile apps or server-to-server)
+    if (!origin) {
+      return callback(null, true);
     }
+    // Check if the origin is in our allowed list
+    if (ALLOWED_ORIGINS.includes(origin)) {
+      return callback(null, true);
+    }
+    // If not allowed, reject the request
+    return callback(new Error(`Origin ${origin} not allowed by CORS`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
   exposedHeaders: ['X-Total-Count'],
-  optionsSuccessStatus: 200 // <-- Add this line for legacy browsers support
-}));
+  optionsSuccessStatus: 200
+};
+
+// CORS configuration with security
+app.use(cors(corsOptions));
 
 // Explicitly handle preflight OPTIONS requests for all routes (must be before routes)
-app.options('*', cors());
+app.options('*', cors(corsOptions));
 
 // Rate limiting - ENABLED FOR PRODUCTION
 const isProduction = process.env.NODE_ENV === 'production';
@@ -410,4 +408,3 @@ app.listen(PORT, async () => {
     });
   }, 10 * 60 * 1000); // 10 minutes
 });
-
