@@ -9,11 +9,15 @@ const db = new Database();
 router.get('/colleges/landing', async (req, res) => {
   try {
     const colleges = await db.all(`
-      SELECT c.*, ARRAY_AGG(co.name) FILTER (WHERE co.name IS NOT NULL) as courses
+      SELECT
+        c.*,
+        (
+          SELECT ARRAY_AGG(co.name) FILTER (WHERE co.name IS NOT NULL)
+          FROM courses co
+          WHERE co.college_id = c.id
+        ) as courses
       FROM colleges c
-      LEFT JOIN courses co ON c.id = co.college_id
       WHERE c.show_on_landing = TRUE
-      GROUP BY c.id
       ORDER BY c.landing_order
     `);
 
@@ -42,11 +46,15 @@ router.get('/colleges/:collegeId', async (req, res) => {
     const { collegeId } = req.params;
 
     const college = await db.get(`
-      SELECT c.*, ARRAY_AGG(co.name) FILTER (WHERE co.name IS NOT NULL) as courses
+      SELECT
+        c.*,
+        (
+          SELECT ARRAY_AGG(co.name) FILTER (WHERE co.name IS NOT NULL)
+          FROM courses co
+          WHERE co.college_id = c.id
+        ) as courses
       FROM colleges c
-      LEFT JOIN courses co ON c.id = co.college_id
       WHERE c.id = $1 AND c.show_on_landing = TRUE
-      GROUP BY c.id
     `, [collegeId]);
 
     if (!college) {
