@@ -77,7 +77,7 @@ router.get('/courses',
       const collegeId = req.user.college_id;
 
       let query = `
-        SELECT c.id, c.name, c.code, c.description, c.duration, c.college_id, c.created_at, c.updated_at, COUNT(cl.id) as class_count
+        SELECT c.id, c.name, c.code, c.description, c.duration_months, c.college_id, c.created_at, COUNT(cl.id) as class_count
         FROM courses c
         LEFT JOIN classes cl ON c.id = cl.course_id
         WHERE c.college_id = ?
@@ -89,7 +89,7 @@ router.get('/courses',
         params.push(`%${search}%`, `%${search}%`);
       }
 
-      query += ' GROUP BY c.id, c.name, c.code, c.description, c.duration, c.college_id, c.created_at, c.updated_at ORDER BY c.name LIMIT ? OFFSET ?';
+      query += ' GROUP BY c.id, c.name, c.code, c.description, c.duration_months, c.college_id, c.created_at ORDER BY c.name LIMIT ? OFFSET ?';
       params.push(parseInt(limit), offset);
 
       const courses = await db.all(query, params);
