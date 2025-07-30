@@ -198,7 +198,7 @@ router.post('/collections',
 
       // Verify student belongs to this college
       const student = await db.get(
-        'SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = "student"',
+        'SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = \'student\'',
         [student_id, collegeId]
       );
       if (!student) {
@@ -398,7 +398,7 @@ router.get('/students/:studentId/summary',
 
       // Verify student belongs to this college
       const student = await db.get(
-        'SELECT id, first_name, last_name FROM users WHERE id = $1 AND college_id = $2 AND role = "student"',
+        'SELECT id, first_name, last_name FROM users WHERE id = $1 AND college_id = $2 AND role = \'student\'',
         [studentId, collegeId]
       );
       if (!student) {

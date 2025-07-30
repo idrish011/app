@@ -172,7 +172,7 @@ router.post('/classes', auth.authenticateToken, async (req, res) => {
 
     // Verify teacher belongs to college
     const teacher = await db.get(
-      'SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = "teacher"',
+      'SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = \'teacher\'',
       [teacher_id, college_id]
     );
 
@@ -418,7 +418,7 @@ router.delete('/assignments/:id', auth.authenticateToken, async (req, res) => {
     }
 
     // Soft delete by setting status to inactive
-    await db.run("UPDATE assignments SET status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [id]);
+    await db.run('UPDATE assignments SET status = \'inactive\', updated_at = CURRENT_TIMESTAMP WHERE id = $1', [id]);
     res.json({ message: 'Assignment deleted successfully' });
   } catch (error) {
     console.error('Delete assignment error:', error);

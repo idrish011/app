@@ -308,7 +308,7 @@ async function getSuperAdminStats() {
     const totalUsers = await db.get('SELECT COUNT(*) as count FROM users');
     
     // Get active subscriptions
-    const activeSubscriptions = await db.get("SELECT COUNT(*) as count FROM colleges WHERE subscription_status = 'active'");
+    const activeSubscriptions = await db.get('SELECT COUNT(*) as count FROM colleges WHERE subscription_status = \'active\'');
     
     // Get recent activity (last 30 days)
     const recentActivity = await db.get(`
@@ -333,13 +333,13 @@ async function getCollegeAdminStats(collegeId) {
   try {
     // Get total students
     const totalStudents = await db.get(
-      'SELECT COUNT(*) as count FROM users WHERE college_id = $1 AND role = "student"',
+      'SELECT COUNT(*) as count FROM users WHERE college_id = $1 AND role = \'student\'',
       [collegeId]
     );
     
     // Get total teachers
     const totalTeachers = await db.get(
-      'SELECT COUNT(*) as count FROM users WHERE college_id = $1 AND role = "teacher"',
+      'SELECT COUNT(*) as count FROM users WHERE college_id = $1 AND role = \'teacher\'',
       [collegeId]
     );
     
@@ -351,7 +351,7 @@ async function getCollegeAdminStats(collegeId) {
     
     // Get total fees collected
     const totalFees = await db.get(
-      'SELECT SUM(amount_paid) as total FROM fee_collections WHERE college_id = $1 AND status = "paid"',
+      'SELECT SUM(amount_paid) as total FROM fee_collections WHERE college_id = $1 AND status = \'paid\'',
       [collegeId]
     );
 
@@ -463,7 +463,7 @@ async function getStudentStats(studentId, collegeId) {
     
     // Get total fees paid
     const totalFeesPaid = await db.get(
-      'SELECT SUM(amount_paid) as total FROM fee_collections WHERE student_id = $1 AND status = "paid"',
+      'SELECT SUM(amount_paid) as total FROM fee_collections WHERE student_id = $1 AND status = \'paid\'',
       [studentId]
     );
 
@@ -484,7 +484,7 @@ async function getParentStats(parentId, collegeId) {
   try {
     // Get parent's children (students)
     const children = await db.all(
-      'SELECT id FROM users WHERE college_id = $1 AND role = "student" AND parent_id = ?',
+      'SELECT id FROM users WHERE college_id = $1 AND role = \'student\' AND parent_id = ?',
       [collegeId, parentId]
     );
     

@@ -171,7 +171,7 @@ router.post('/classes',
 
       // Verify teacher belongs to this college
       const teacher = await db.get(
-        'SELECT id FROM users WHERE id = ? AND college_id = ? AND role = "teacher"',
+        'SELECT id FROM users WHERE id = ? AND college_id = ? AND role = \'teacher\'',
         [teacher_id, collegeId]
       );
       if (!teacher) {
@@ -1277,7 +1277,7 @@ router.post('/admissions',
 
       // Verify student belongs to this college
       const student = await db.get(
-        'SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = "student"',
+        'SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = \'student\'',
         [student_id, collegeId]
       );
       if (!student) {
@@ -2339,9 +2339,9 @@ router.post('/classes/:classId/enroll-students', auth.authenticateToken, auth.au
     let enrolled = 0;
     for (const student_id of student_ids) {
       // Verify student belongs to this college
-      const student = await db.get('SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = "student"', [student_id, collegeId]);
+      const student = await db.get('SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = \'student\'', [student_id, collegeId]);
       if (student) {
-        await db.run('INSERT OR IGNORE INTO class_enrollments (id, class_id, student_id, enrollment_date, status, created_at) VALUES ($1, $2, $3, NOW(), "enrolled", NOW())', [uuidv4(), classId, student_id]);
+        await db.run('INSERT OR IGNORE INTO class_enrollments (id, class_id, student_id, enrollment_date, status, created_at) VALUES ($1, $2, $3, NOW(), \'enrolled\', NOW())', [uuidv4(), classId, student_id]);
         enrolled++;
       }
     }
@@ -2376,7 +2376,7 @@ router.get('/classes/:classId/students', auth.authenticateToken, auth.authorizeR
     // Verify class belongs to this college
     const classInfo = await db.get('SELECT * FROM classes WHERE id = $1 AND college_id = $2', [classId, collegeId]);
     if (!classInfo) return res.status(404).json({ error: 'Class not found', message: 'Class does not exist in this college' });
-    const students = await db.all('SELECT u.id, u.first_name, u.last_name, u.email, u.profile_image FROM class_enrollments ce JOIN users u ON ce.student_id = u.id WHERE ce.class_id = $1 AND ce.status = "enrolled"', [classId]);
+    const students = await db.all('SELECT u.id, u.first_name, u.last_name, u.email, u.profile_image FROM class_enrollments ce JOIN users u ON ce.student_id = u.id WHERE ce.class_id = $1 AND ce.status = \'enrolled\'', [classId]);
     res.json({ students });
   } catch (error) {
     console.error('List students error:', error);
@@ -2390,7 +2390,7 @@ router.get('/classes/:classId/students', auth.authenticateToken, auth.authorizeR
 router.get('/teachers', auth.authenticateToken, auth.authorizeRoles('college_admin'), async (req, res) => {
   try {
     const collegeId = req.user.college_id;
-    const teachers = await db.all('SELECT id, first_name, last_name, email, profile_image FROM users WHERE college_id = $1 AND role = "teacher"', [collegeId]);
+    const teachers = await db.all('SELECT id, first_name, last_name, email, profile_image FROM users WHERE college_id = $1 AND role = \'teacher\'', [collegeId]);
     res.json({ teachers });
   } catch (error) {
     console.error('List teachers error:', error);

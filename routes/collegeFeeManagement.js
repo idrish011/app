@@ -149,11 +149,11 @@ router.get('/student-fees/summary', auth.authenticateToken, auth.authorizeRoles(
     // Total collected
     const totalCollected = await db.get('SELECT SUM(amount_paid) as collected FROM student_fee_status WHERE college_id = ?', [collegeId]);
     // Overdue count/amount
-    const overdue = await db.get("SELECT COUNT(*) as count, SUM(total_amount - amount_paid) as overdue FROM student_fee_status WHERE college_id = ? AND status = 'overdue'", [collegeId]);
+    const overdue = await db.get('SELECT COUNT(*) as count, SUM(total_amount - amount_paid) as overdue FROM student_fee_status WHERE college_id = ? AND status = \'overdue\'', [collegeId]);
     // Due count/amount
-    const due = await db.get("SELECT COUNT(*) as count, SUM(total_amount - amount_paid) as due FROM student_fee_status WHERE college_id = ? AND status = 'due'", [collegeId]);
+    const due = await db.get('SELECT COUNT(*) as count, SUM(total_amount - amount_paid) as due FROM student_fee_status WHERE college_id = ? AND status = \'due\'', [collegeId]);
     // Paid count/amount
-    const paid = await db.get("SELECT COUNT(*) as count, SUM(total_amount) as paid FROM student_fee_status WHERE college_id = ? AND status = 'paid'", [collegeId]);
+    const paid = await db.get('SELECT COUNT(*) as count, SUM(total_amount) as paid FROM student_fee_status WHERE college_id = ? AND status = \'paid\'', [collegeId]);
     res.json({
       total_assigned: totalAssigned,
       total_collected: totalCollected,

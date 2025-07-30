@@ -496,7 +496,7 @@ router.delete('/users/:userId', auth.authenticateToken, auth.authorizeRoles('sup
 
     // Soft delete - update status to 'deleted'
     await db.run(
-      "UPDATE users SET status = 'deleted', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+      'UPDATE users SET status = \'deleted\', updated_at = CURRENT_TIMESTAMP WHERE id = $1',
       [userId]
     );
 
@@ -921,7 +921,7 @@ router.get('/logs', auth.authenticateToken, auth.authorizeRoles('super_admin'), 
 
     // Get unique values for filters
     const [users, roles, actions, entities] = await Promise.all([
-      db.all('SELECT DISTINCT user_id, user_email FROM activity_logs WHERE user_id != "anonymous" ORDER BY user_email'),
+      db.all('SELECT DISTINCT user_id, user_email FROM activity_logs WHERE user_id != \'anonymous\' ORDER BY user_email'),
       db.all('SELECT DISTINCT user_role FROM activity_logs ORDER BY user_role'),
       db.all('SELECT DISTINCT action FROM activity_logs ORDER BY action'),
       db.all('SELECT DISTINCT entity FROM activity_logs WHERE entity IS NOT NULL ORDER BY entity')
@@ -958,19 +958,19 @@ router.get('/reports/usage', auth.authenticateToken, auth.authorizeRoles('super_
     // Set date filter based on period
     switch (period) {
       case '1d':
-        dateFilter = 'WHERE timestamp >= datetime("now", "-1 day")';
+        dateFilter = 'WHERE timestamp >= NOW() - INTERVAL \'1 day\'';
         break;
       case '7d':
-        dateFilter = 'WHERE timestamp >= datetime("now", "-7 days")';
+        dateFilter = 'WHERE timestamp >= NOW() - INTERVAL \'7 days\'';
         break;
       case '30d':
-        dateFilter = 'WHERE timestamp >= datetime("now", "-30 days")';
+        dateFilter = 'WHERE timestamp >= NOW() - INTERVAL \'30 days\'';
         break;
       case '90d':
-        dateFilter = 'WHERE timestamp >= datetime("now", "-90 days")';
+        dateFilter = 'WHERE timestamp >= NOW() - INTERVAL \'90 days\'';
         break;
       default:
-        dateFilter = 'WHERE timestamp >= datetime("now", "-7 days")';
+        dateFilter = 'WHERE timestamp >= NOW() - INTERVAL \'7 days\'';
     }
 
     // Get activity summary
@@ -1050,16 +1050,16 @@ router.get('/reports/profit', auth.authenticateToken, auth.authorizeRoles('super
     // Set date filter based on period
     switch (period) {
       case '7d':
-        dateFilter = 'WHERE created_at >= datetime("now", "-7 days")';
+        dateFilter = 'WHERE created_at >= NOW() - INTERVAL \'7 days\'';
         break;
       case '30d':
-        dateFilter = 'WHERE created_at >= datetime("now", "-30 days")';
+        dateFilter = 'WHERE created_at >= NOW() - INTERVAL \'30 days\'';
         break;
       case '90d':
-        dateFilter = 'WHERE created_at >= datetime("now", "-90 days")';
+        dateFilter = 'WHERE created_at >= NOW() - INTERVAL \'90 days\'';
         break;
       default:
-        dateFilter = 'WHERE created_at >= datetime("now", "-30 days")';
+        dateFilter = 'WHERE created_at >= NOW() - INTERVAL \'30 days\'';
     }
 
     // Get fee summary
@@ -1165,7 +1165,7 @@ router.get('/reports/system-health', auth.authenticateToken, auth.authorizeRoles
     const activeSessions = await db.all(`
       SELECT user_email, user_role, MAX(timestamp) as last_activity
       FROM activity_logs 
-      WHERE timestamp >= datetime("now", "-24 hours")
+      WHERE timestamp >= NOW() - INTERVAL \'24 hours\'
       AND user_id != 'anonymous'
       GROUP BY user_id
       ORDER BY last_activity DESC
