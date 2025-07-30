@@ -163,7 +163,7 @@ router.post('/classes',
 
       // Verify course belongs to this college
       const course = await db.get(
-        'SELECT id FROM courses WHERE id = ? AND college_id = ?',
+        'SELECT id FROM courses WHERE id = $1 AND college_id = $2',
         [course_id, collegeId]
       );
       if (!course) {
@@ -175,7 +175,7 @@ router.post('/classes',
 
       // Verify teacher belongs to this college
       const teacher = await db.get(
-        'SELECT id FROM users WHERE id = ? AND college_id = ? AND role = \'teacher\'',
+        'SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = \'teacher\'',
         [teacher_id, collegeId]
       );
       if (!teacher) {
@@ -190,7 +190,7 @@ router.post('/classes',
       // Create class
       await db.run(`
         INSERT INTO classes (id, college_id, course_id, semester_id, teacher_id, name, schedule, room_number, max_students)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `, [classId, collegeId, course_id, semester_id, teacher_id, name, schedule, room_number, max_students]);
 
       const newClass = await db.get(`
@@ -198,7 +198,7 @@ router.post('/classes',
         FROM classes cl
         JOIN courses c ON cl.course_id = c.id
         JOIN users u ON cl.teacher_id = u.id
-        WHERE cl.id = ?
+        WHERE cl.id = $1
       `, [classId]);
 
       res.status(201).json({
