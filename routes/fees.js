@@ -139,23 +139,27 @@ router.get('/structures',
         WHERE fs.college_id = $1
       `;
       const params = [collegeId];
+      let paramIndex = 2;
 
       if (course_id) {
-        query += ' AND fs.course_id = $1';
+        query += ` AND fs.course_id = $${paramIndex}`;
         params.push(course_id);
+        paramIndex++;
       }
 
       if (academic_year_id) {
-        query += ' AND fs.academic_year_id = $1';
+        query += ` AND fs.academic_year_id = $${paramIndex}`;
         params.push(academic_year_id);
+        paramIndex++;
       }
 
       if (fee_type) {
-        query += ' AND fs.fee_type = $1';
+        query += ` AND fs.fee_type = $${paramIndex}`;
         params.push(fee_type);
+        paramIndex++;
       }
 
-      query += ' ORDER BY fs.created_at DESC LIMIT $1 OFFSET $2';
+      query += ` ORDER BY fs.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
 
       const feeStructures = await db.all(query, params);
@@ -296,38 +300,45 @@ router.get('/collections',
         WHERE fc.college_id = $1
       `;
       const params = [collegeId];
+      let paramIndex = 2;
 
       if (student_id) {
-        query += ' AND fc.student_id = $1';
+        query += ` AND fc.student_id = $${paramIndex}`;
         params.push(student_id);
+        paramIndex++;
       }
 
       if (fee_structure_id) {
-        query += ' AND fc.fee_structure_id = $1';
+        query += ` AND fc.fee_structure_id = $${paramIndex}`;
         params.push(fee_structure_id);
+        paramIndex++;
       }
 
       if (payment_method) {
-        query += ' AND fc.payment_method = $1';
+        query += ` AND fc.payment_method = $${paramIndex}`;
         params.push(payment_method);
+        paramIndex++;
       }
 
       if (status) {
-        query += ' AND fc.status = $1';
+        query += ` AND fc.status = $${paramIndex}`;
         params.push(status);
+        paramIndex++;
       }
 
       if (start_date) {
-        query += ' AND fc.payment_date >= $1';
+        query += ` AND fc.payment_date >= $${paramIndex}`;
         params.push(start_date);
+        paramIndex++;
       }
 
       if (end_date) {
-        query += ' AND fc.payment_date <= $1';
+        query += ` AND fc.payment_date <= $${paramIndex}`;
         params.push(end_date);
+        paramIndex++;
       }
 
-      query += ' ORDER BY fc.payment_date DESC LIMIT $1 OFFSET $2';
+      query += ` ORDER BY fc.payment_date DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
 
       const collections = await db.all(query, params);
@@ -586,15 +597,18 @@ router.get('/reports/outstanding',
         WHERE fs.college_id = ? AND u.role = 'student'
       `;
       const params = [collegeId];
+      let paramIndex = 2;
 
       if (course_id) {
-        query += ' AND fs.course_id = $1';
+        query += ` AND fs.course_id = $${paramIndex}`;
         params.push(course_id);
+        paramIndex++;
       }
 
       if (academic_year_id) {
-        query += ' AND fs.academic_year_id = $1';
+        query += ` AND fs.academic_year_id = $${paramIndex}`;
         params.push(academic_year_id);
+        paramIndex++;
       }
 
       query += `

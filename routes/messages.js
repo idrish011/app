@@ -234,13 +234,15 @@ router.get('/', auth.authenticateToken, async (req, res) => {
       WHERE mr.recipient_id = $1
     `;
     const params = [userId];
+    let paramIndex = 2;
 
     if (type) {
-      query += ' AND m.type = $1';
+      query += ` AND m.type = $${paramIndex}`;
       params.push(type);
+      paramIndex++;
     }
 
-    query += ' ORDER BY m.created_at DESC LIMIT $1 OFFSET $2';
+    query += ` ORDER BY m.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     params.push(limit, offset);
 
     const messages = await db.all(query, params);
@@ -253,10 +255,12 @@ router.get('/', auth.authenticateToken, async (req, res) => {
       WHERE mr.recipient_id = $1
     `;
     const countParams = [userId];
+    let countParamIndex = 2;
 
     if (type) {
-      countQuery += ' AND m.type = $1';
+      countQuery += ` AND m.type = $${countParamIndex}`;
       countParams.push(type);
+      countParamIndex++;
     }
 
     const totalResult = await db.get(countQuery, countParams);
@@ -303,7 +307,7 @@ router.get('/:messageId', auth.authenticateToken, async (req, res) => {
     if (!message.is_read) {
       await db.run(`
         UPDATE message_recipients 
-        SET is_read = 1, read_at = datetime('now')
+        SET is_read = 1, read_at = NOW()
         WHERE message_id = $1 AND recipient_id = $2
       `, [messageId, userId]);
     }
@@ -326,7 +330,7 @@ router.put('/:messageId/read', auth.authenticateToken, async (req, res) => {
 
     const result = await db.run(`
       UPDATE message_recipients 
-      SET is_read = 1, read_at = datetime('now')
+      SET is_read = 1, read_at = NOW()
       WHERE message_id = $1 AND recipient_id = $2
     `, [messageId, userId]);
 

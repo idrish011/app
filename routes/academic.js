@@ -230,23 +230,27 @@ router.get('/classes',
         WHERE cl.college_id = $1
       `;
       const params = [collegeId];
+      let paramIndex = 2;
 
       if (course_id) {
-        query += ' AND cl.course_id = $1';
+        query += ` AND cl.course_id = $${paramIndex}`;
         params.push(course_id);
+        paramIndex++;
       }
 
       if (teacher_id) {
-        query += ' AND cl.teacher_id = $1';
+        query += ` AND cl.teacher_id = $${paramIndex}`;
         params.push(teacher_id);
+        paramIndex++;
       }
 
       if (search) {
-        query += ' AND (cl.name LIKE $1 OR c.name LIKE $2)';
+        query += ` AND (cl.name LIKE $${paramIndex} OR c.name LIKE $${paramIndex + 1})`;
         params.push(`%${search}%`, `%${search}%`);
+        paramIndex += 2;
       }
 
-      query += ' GROUP BY cl.id ORDER BY cl.created_at DESC LIMIT $1 OFFSET $2';
+      query += ` GROUP BY cl.id ORDER BY cl.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
 
       const classes = await db.all(query, params);
@@ -525,15 +529,18 @@ router.get('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher'
       const { class_id, status } = req.query;
       let whereClause = 'WHERE a.created_by = $1';
       let params = [req.user.id];
+      let paramIndex = 2;
 
       if (class_id) {
-        whereClause += ' AND a.class_id = $1';
+        whereClause += ` AND a.class_id = $${paramIndex}`;
         params.push(class_id);
+        paramIndex++;
       }
 
       if (status) {
-        whereClause += ' AND a.status = $1';
+        whereClause += ` AND a.status = $${paramIndex}`;
         params.push(status);
+        paramIndex++;
       }
 
       const assignments = await db.all(`
@@ -996,15 +1003,18 @@ router.get('/classes/:classId/results',
         WHERE r.class_id = $1
       `;
       const params = [classId];
+      let paramIndex = 2;
 
       if (student_id) {
-        query += ' AND r.student_id = $1';
+        query += ` AND r.student_id = $${paramIndex}`;
         params.push(student_id);
+        paramIndex++;
       }
 
       if (exam_type) {
-        query += ' AND r.exam_type = $1';
+        query += ` AND r.exam_type = $${paramIndex}`;
         params.push(exam_type);
+        paramIndex++;
       }
 
       query += ' ORDER BY r.created_at DESC';
@@ -1211,7 +1221,7 @@ router.get('/admissions',
       }
 
       if (status) {
-        countQuery += ' AND a.status = $1';
+        countQuery += ' AND a.status = ?';
         countParams.push(status);
       }
 
