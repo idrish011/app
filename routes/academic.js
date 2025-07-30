@@ -77,7 +77,7 @@ router.get('/courses',
       const collegeId = req.user.college_id;
 
       let query = `
-        SELECT c.*, COUNT(cl.id) as class_count
+        SELECT c.id, c.name, c.code, c.description, c.duration, c.college_id, c.created_at, c.updated_at, COUNT(cl.id) as class_count
         FROM courses c
         LEFT JOIN classes cl ON c.id = cl.course_id
         WHERE c.college_id = ?
@@ -89,7 +89,7 @@ router.get('/courses',
         params.push(`%${search}%`, `%${search}%`);
       }
 
-      query += ' GROUP BY c.id ORDER BY c.name LIMIT ? OFFSET ?';
+      query += ' GROUP BY c.id, c.name, c.code, c.description, c.duration, c.college_id, c.created_at, c.updated_at ORDER BY c.name LIMIT ? OFFSET ?';
       params.push(parseInt(limit), offset);
 
       const courses = await db.all(query, params);
@@ -221,7 +221,8 @@ router.get('/classes',
       const collegeId = req.user.college_id;
 
       let query = `
-        SELECT cl.*, c.name as course_name, u.first_name, u.last_name as teacher_name,
+        SELECT cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, cl.max_students, cl.college_id, cl.created_at, cl.updated_at, 
+               c.name as course_name, u.first_name, u.last_name as teacher_name,
                COUNT(ce.student_id) as enrolled_students
         FROM classes cl
         JOIN courses c ON cl.course_id = c.id
@@ -250,7 +251,7 @@ router.get('/classes',
         paramIndex += 2;
       }
 
-      query += ` GROUP BY cl.id ORDER BY cl.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      query += ` GROUP BY cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, cl.max_students, cl.college_id, cl.created_at, cl.updated_at, c.name, u.first_name, u.last_name ORDER BY cl.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
 
       const classes = await db.all(query, params);
@@ -544,13 +545,13 @@ router.get('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher'
       }
 
       const assignments = await db.all(`
-        SELECT a.*, c.name as class_name,
+        SELECT a.id, a.title, a.description, a.class_id, a.due_date, a.total_marks, a.weightage, a.assignment_type, a.document_path, a.status, a.created_by, a.created_at, a.updated_at, c.name as class_name,
                COUNT(sa.id) as submission_count
         FROM assignments a
         JOIN classes c ON a.class_id = c.id
         LEFT JOIN student_assignments sa ON a.id = sa.assignment_id
         ${whereClause}
-        GROUP BY a.id
+        GROUP BY a.id, a.title, a.description, a.class_id, a.due_date, a.total_marks, a.weightage, a.assignment_type, a.document_path, a.status, a.created_by, a.created_at, a.updated_at, c.name
         ORDER BY a.created_at DESC
       `, params);
 

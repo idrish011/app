@@ -620,9 +620,9 @@ router.get('/teacher/performance-trends', auth.authenticateToken, auth.authorize
       FROM grades g
       JOIN assignments ass ON g.assignment_id = ass.id
       JOIN classes cl ON ass.class_id = cl.id
-      LEFT JOIN attendance a ON cl.id = a.class_id AND a.date >= date('now', '-6 months')
+      LEFT JOIN attendance a ON cl.id = a.class_id AND a.date >= NOW() - INTERVAL '6 months'
       WHERE cl.teacher_id = $1 AND g.status != 'deleted'
-      GROUP BY strftime('%Y-%m', g.created_at)
+      GROUP BY TO_CHAR(g.created_at, 'YYYY-MM')
       ORDER BY year DESC, month DESC
       LIMIT 6
     `, [teacherId]);
@@ -652,8 +652,8 @@ router.get('/teacher/upcoming-deadlines', auth.authenticateToken, auth.authorize
         a.due_date,
         a.assignment_type as type,
         CASE 
-          WHEN a.due_date <= date('now', '+3 days') THEN 'high'
-          WHEN a.due_date <= date('now', '+7 days') THEN 'medium'
+                  WHEN a.due_date <= NOW() + INTERVAL '3 days' THEN 'high'
+        WHEN a.due_date <= NOW() + INTERVAL '7 days' THEN 'medium'
           ELSE 'low'
         END as priority,
         cl.name as class_name,
@@ -662,7 +662,7 @@ router.get('/teacher/upcoming-deadlines', auth.authenticateToken, auth.authorize
       FROM assignments a
       JOIN classes cl ON a.class_id = cl.id
       LEFT JOIN assignment_submissions s ON a.id = s.assignment_id
-      WHERE cl.teacher_id = $1 AND a.status = 'active' AND a.due_date >= date('now')
+      WHERE cl.teacher_id = $1 AND a.status = 'active' AND a.due_date >= NOW()
       GROUP BY a.id
       ORDER BY a.due_date ASC
       LIMIT 10
