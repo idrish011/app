@@ -165,7 +165,7 @@ router.get('/attendance', auth.authenticateToken, async (req, res) => {
           JOIN users s ON a.student_id = s.id
           JOIN classes cl ON a.class_id = cl.id
           JOIN courses c ON cl.course_id = c.id
-          WHERE cl.teacher_id = $1 AND a.date >= date('now', '-30 days')
+          WHERE cl.teacher_id = $1 AND a.date >= NOW() - INTERVAL '30 days'
           ORDER BY a.date DESC, s.first_name, s.last_name
         `, [user.id]);
         break;
@@ -176,7 +176,7 @@ router.get('/attendance', auth.authenticateToken, async (req, res) => {
           JOIN classes cl ON a.class_id = cl.id
           JOIN courses c ON cl.course_id = c.id
           JOIN users u ON cl.teacher_id = u.id
-          WHERE a.student_id = $1 AND a.date >= date('now', '-30 days')
+          WHERE a.student_id = $1 AND a.date >= NOW() - INTERVAL '30 days'
           ORDER BY a.date DESC
         `, [user.id]);
         break;
@@ -188,7 +188,7 @@ router.get('/attendance', auth.authenticateToken, async (req, res) => {
           JOIN classes cl ON a.class_id = cl.id
           JOIN courses c ON cl.course_id = c.id
           JOIN users u ON cl.teacher_id = u.id
-          WHERE c.college_id = $1 AND a.date >= date('now', '-30 days')
+          WHERE c.college_id = $1 AND a.date >= NOW() - INTERVAL '30 days'
           ORDER BY a.date DESC
         `, [user.college_id]);
         break;
@@ -313,7 +313,7 @@ async function getSuperAdminStats() {
     // Get recent activity (last 30 days)
     const recentActivity = await db.get(`
       SELECT COUNT(*) as count FROM activity_logs 
-      WHERE created_at >= datetime('now', '-30 days')
+              WHERE created_at >= NOW() - INTERVAL '30 days'
     `);
 
     return {
@@ -613,8 +613,8 @@ router.get('/teacher/performance-trends', auth.authenticateToken, auth.authorize
     
     const performanceTrends = await db.all(`
       SELECT 
-        strftime('%m', g.created_at) as month,
-        strftime('%Y', g.created_at) as year,
+        EXTRACT(MONTH FROM g.created_at) as month,
+        EXTRACT(YEAR FROM g.created_at) as year,
         AVG(g.grade_percentage) as average_grade,
         AVG(CASE WHEN a.status = 'present' THEN 100 ELSE 0 END) as attendance_rate
       FROM grades g

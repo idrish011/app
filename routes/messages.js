@@ -99,7 +99,7 @@ router.post('/',
         INSERT INTO messages (
           id, title, content, type, priority, sender_id, sender_name,
           target_type, target_ids, attachments, expires_at, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, datetime('now'), datetime('now'))
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
       `, [
         messageId, title, content, type, priority, senderId, senderName,
         target_type, parsedTargetIds, attachments, expires_at
@@ -184,7 +184,7 @@ router.post('/',
         await db.run(`
           INSERT INTO message_recipients (
             id, message_id, recipient_id, is_read, created_at
-          ) VALUES ($1, $2, $3, 0, datetime('now'))
+          ) VALUES ($1, $2, $3, 0, NOW())
         `, [recipientId, messageId, recipient.id]);
 
         // Send push notification if token exists

@@ -77,7 +77,7 @@ router.get('/courses',
       const collegeId = req.user.college_id;
 
       let query = `
-        SELECT c.id, c.name, c.code, c.description, c.duration_months, c.college_id, c.created_at, COUNT(cl.id) as class_count
+        SELECT c.id, c.name, c.code, c.description, c.credits, c.duration_months, c.fee_amount, c.status, c.college_id, c.created_at, COUNT(cl.id) as class_count
         FROM courses c
         LEFT JOIN classes cl ON c.id = cl.course_id
         WHERE c.college_id = ?
@@ -89,7 +89,7 @@ router.get('/courses',
         params.push(`%${search}%`, `%${search}%`);
       }
 
-      query += ' GROUP BY c.id, c.name, c.code, c.description, c.duration_months, c.college_id, c.created_at ORDER BY c.name LIMIT ? OFFSET ?';
+              query += ' GROUP BY c.id, c.name, c.code, c.description, c.credits, c.duration_months, c.fee_amount, c.status, c.college_id, c.created_at ORDER BY c.name LIMIT ? OFFSET ?';
       params.push(parseInt(limit), offset);
 
       const courses = await db.all(query, params);
@@ -221,7 +221,7 @@ router.get('/classes',
       const collegeId = req.user.college_id;
 
       let query = `
-        SELECT cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, cl.max_students, cl.college_id, cl.created_at, cl.updated_at, 
+        SELECT cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, cl.max_students, cl.status, cl.college_id, cl.created_at, 
                c.name as course_name, u.first_name, u.last_name as teacher_name,
                COUNT(ce.student_id) as enrolled_students
         FROM classes cl
@@ -251,7 +251,7 @@ router.get('/classes',
         paramIndex += 2;
       }
 
-      query += ` GROUP BY cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, cl.max_students, cl.college_id, cl.created_at, cl.updated_at, c.name, u.first_name, u.last_name ORDER BY cl.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      query += ` GROUP BY cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, cl.max_students, cl.status, cl.college_id, cl.created_at, c.name, u.first_name, u.last_name ORDER BY cl.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
 
       const classes = await db.all(query, params);
@@ -1621,7 +1621,7 @@ router.get('/reports/enrollment',
         SELECT COUNT(*) as new_admissions
         FROM admissions 
         WHERE college_id = $1 AND status = 'approved'
-        AND admission_date >= date('now', '-1 month')
+        AND admission_date >= NOW() - INTERVAL '1 month'
       `, [collegeId]);
 
       // Get enrollment by course
@@ -1671,7 +1671,7 @@ router.get('/reports/financial',
           COUNT(*) as total_transactions
         FROM fee_collections 
         WHERE college_id = $1 AND status = 'paid'
-        AND payment_date >= date('now', '-1 month')
+        AND payment_date >= NOW() - INTERVAL '1 month'
       `, [collegeId]);
 
       // Get outstanding fees
@@ -1740,7 +1740,7 @@ router.get('/reports/graduation',
         SELECT COUNT(*) as graduates_this_year
         FROM users 
         WHERE college_id = $1 AND role = 'student' 
-        AND graduation_date >= date('now', 'start of year')
+        AND graduation_date >= DATE_TRUNC('year', NOW())
       `, [collegeId]);
 
       // Get graduation by course
@@ -2352,7 +2352,7 @@ router.post('/classes/:classId/enroll-students', auth.authenticateToken, auth.au
       // Verify student belongs to this college
       const student = await db.get('SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = \'student\'', [student_id, collegeId]);
       if (student) {
-        await db.run('INSERT OR IGNORE INTO class_enrollments (id, class_id, student_id, enrollment_date, status, created_at) VALUES ($1, $2, $3, NOW(), \'enrolled\', NOW())', [uuidv4(), classId, student_id]);
+        await db.run('INSERT INTO class_enrollments (id, class_id, student_id, enrollment_date, status, created_at) VALUES ($1, $2, $3, NOW(), \'enrolled\', NOW()) ON CONFLICT (class_id, student_id) DO NOTHING', [uuidv4(), classId, student_id]);
         enrolled++;
       }
     }

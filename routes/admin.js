@@ -1092,11 +1092,11 @@ router.get('/reports/profit', auth.authenticateToken, auth.authorizeRoles('super
     // Get monthly revenue trend
     const monthlyRevenue = await db.all(`
       SELECT 
-        strftime('%Y-%m', created_at) as month,
+        TO_CHAR(created_at, 'YYYY-MM') as month,
         SUM(paid_amount) as revenue
       FROM fees 
       ${dateFilter}
-      GROUP BY strftime('%Y-%m', created_at)
+              GROUP BY TO_CHAR(created_at, 'YYYY-MM')
       ORDER BY month DESC
     `);
 
