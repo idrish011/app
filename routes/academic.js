@@ -2286,7 +2286,7 @@ router.post('/semesters', auth.authenticateToken, auth.authorizeRoles('college_a
       return res.status(404).json({ error: 'Academic year not found', message: 'Academic year does not exist in this college' });
     }
     const id = uuidv4();
-    await db.run(`INSERT INTO semesters (id, academic_year_id, name, start_date, end_date, status, created_at) VALUES ($1, $2, $3, #4, $5, $6, NOW())`, [id, academic_year_id, name, start_date, end_date, status || 'active']);
+    await db.run(`INSERT INTO semesters (id, academic_year_id, name, start_date, end_date, status, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())`, [id, academic_year_id, name, start_date, end_date, status || 'active']);
     const semester = await db.get('SELECT * FROM semesters WHERE id = $1', [id]);
     res.status(201).json({ message: 'Semester created', semester });
   } catch (error) {
