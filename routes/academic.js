@@ -2402,7 +2402,7 @@ router.get('/teachers', auth.authenticateToken, auth.authorizeRoles('college_adm
 router.get('/students', auth.authenticateToken, auth.authorizeRoles('college_admin'), async (req, res) => {
   try {
     const collegeId = req.user.college_id;
-    const students = await db.all('SELECT id, first_name, last_name, email, profile_image FROM users WHERE college_id = $1 AND role = "student"', [collegeId]);
+    const students = await db.all('SELECT id, first_name, last_name, email, profile_image FROM users WHERE college_id = $1 AND role = \'student\'', [collegeId]);
     res.json({ students });
   } catch (error) {
     console.error('List students error:', error);

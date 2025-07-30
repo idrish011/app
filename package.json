@@ -8,6 +8,7 @@
     "dev": "nodemon index.js",
     "test": "node test-security.js",
     "test:security": "node test-security.js",
+    "test:db": "node test-database-connection.js",
     "migrate": "node migrate-*.js",
     "setup": "npm install && npm run migrate",
     "health": "curl http://localhost:3000/api/health",
@@ -21,7 +22,7 @@
     "api",
     "nodejs",
     "express",
-    "sqlite"
+    "postgresql"
   ],
   "author": "CampusLink Team",
   "license": "MIT",
@@ -54,8 +55,6 @@
     "node-fetch": "^3.3.2",
     "npm": "^11.4.2",
     "pg": "^8.16.3",
-    "sqlite": "^5.0.1",
-    "sqlite3": "^5.1.6",
     "uuid": "^9.0.1",
     "winston": "^3.11.0",
     "xss-clean": "^0.1.4"

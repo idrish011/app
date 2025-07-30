@@ -3,6 +3,13 @@ const path = require('path');
 
 class Database {
   constructor() {
+    // Use DATABASE_URL from environment variables
+    const connectionString = process.env.DATABASE_URL;
+    
+    if (!connectionString) {
+      throw new Error('DATABASE_URL environment variable is required');
+    }
+    
     this.pool = new Pool({
       connectionString: 'postgresql://neondb_owner:npg_5jDmyEF4cPul@ep-holy-lab-a1gq3lv4-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
       ssl: { rejectUnauthorized: false }
