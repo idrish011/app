@@ -123,16 +123,17 @@ router.post('/',
         }
 
         const classIds = teacherClasses.map(cls => cls.id);
-        const placeholders = classIds.map(() => '?').join(',');
+        const classPlaceholders = classIds.map((_, index) => `$${index + 1}`).join(',');
 
         if (target_type === 'specific') {
           // Send to specific students in teacher's classes
           const targetIds = JSON.parse(target_ids);
+          const targetPlaceholders = targetIds.map((_, index) => `$${classIds.length + index + 1}`).join(',');
           recipients = await db.all(`
             SELECT u.id, u.first_name, u.last_name, u.email, u.push_token
             FROM users u
             JOIN class_enrollments ce ON u.id = ce.student_id
-            WHERE ce.class_id IN (${placeholders}) AND u.id IN (${targetIds.map(() => '$1').join(',')})
+            WHERE ce.class_id IN (${classPlaceholders}) AND u.id IN (${targetPlaceholders})
           `, [...classIds, ...targetIds]);
         } else {
           // Send to all students in teacher's classes
@@ -140,18 +141,18 @@ router.post('/',
             SELECT u.id, u.first_name, u.last_name, u.email, u.push_token
             FROM users u
             JOIN class_enrollments ce ON u.id = ce.student_id
-            WHERE ce.class_id IN (${placeholders})
+            WHERE ce.class_id IN (${classPlaceholders})
           `, classIds);
         }
       } else if (req.user.role === 'college_admin') {
         // College admins can send to all users in their college
         if (target_type === 'specific') {
           const targetIds = JSON.parse(target_ids);
-          const placeholders = targetIds.map(() => '$1').join(',');
+          const targetPlaceholders = targetIds.map((_, index) => `$${index + 2}`).join(',');
           recipients = await db.all(`
             SELECT id, first_name, last_name, email, push_token
             FROM users
-            WHERE college_id = $1 AND id IN (${placeholders})
+            WHERE college_id = $1 AND id IN (${targetPlaceholders})
           `, [req.user.college_id, ...targetIds]);
         } else {
           recipients = await db.all(`
@@ -164,11 +165,11 @@ router.post('/',
         // Super admin can send to all users
         if (target_type === 'specific') {
           const targetIds = JSON.parse(target_ids);
-          const placeholders = targetIds.map(() => '$1').join(',');
+          const targetPlaceholders = targetIds.map((_, index) => `$${index + 1}`).join(',');
           recipients = await db.all(`
             SELECT id, first_name, last_name, email, push_token
             FROM users
-            WHERE id IN (${placeholders})
+            WHERE id IN (${targetPlaceholders})
           `, targetIds);
         } else {
           recipients = await db.all(`
