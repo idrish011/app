@@ -450,7 +450,7 @@ router.post('/assignments/:assignmentId/submit',
 
       // Check if student has already submitted this assignment
       const existingSubmission = await db.get(`
-        SELECT id FROM student_assignments 
+        SELECT id FROM assignment_submissions 
         WHERE assignment_id = $1 AND student_id = $2
       `, [assignmentId, studentId]);
 
@@ -472,7 +472,7 @@ router.post('/assignments/:assignmentId/submit',
 
       // Create submission record
       await db.run(`
-        INSERT INTO student_assignments (
+        INSERT INTO assignment_submissions (
           id, assignment_id, student_id, submitted_at, 
           document_path, remarks, status
         ) VALUES ($1, $2, $3, NOW(), $4, $5, $6)
@@ -481,7 +481,7 @@ router.post('/assignments/:assignmentId/submit',
       // Get the created submission
       const submission = await db.get(`
         SELECT sa.*, a.title as assignment_title, a.total_marks
-        FROM student_assignments sa
+        FROM assignment_submissions sa
         JOIN assignments a ON sa.assignment_id = a.id
         WHERE sa.id = $1
       `, [submissionId]);
@@ -553,7 +553,7 @@ router.get('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher'
                COUNT(sa.id) as submission_count
         FROM assignments a
         JOIN classes c ON a.class_id = c.id
-        LEFT JOIN student_assignments sa ON a.id = sa.assignment_id
+        LEFT JOIN assignment_submissions sa ON a.id = sa.assignment_id
         ${whereClause}
         GROUP BY a.id, a.title, a.description, a.class_id, a.due_date, a.total_marks, a.weightage, a.assignment_type, a.document_path, a.status, a.created_by, a.created_at, a.updated_at, c.name
         ORDER BY a.created_at DESC
@@ -577,7 +577,7 @@ router.get('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher'
         FROM assignments a
         JOIN classes c ON a.class_id = c.id
         JOIN class_enrollments ce ON c.id = ce.class_id
-        LEFT JOIN student_assignments sa ON a.id = sa.assignment_id AND sa.student_id = $1
+        LEFT JOIN assignment_submissions sa ON a.id = sa.assignment_id AND sa.student_id = $1
         WHERE ce.student_id = $2 AND a.status = 'active'
         ORDER BY a.due_date ASC
       `, [req.user.id, req.user.id]);
@@ -617,7 +617,7 @@ router.get('/assignments/:assignmentId', auth.authenticateToken, auth.authorizeR
       // Get submissions for this assignment
       const submissions = await db.all(`
         SELECT sa.*, u.first_name, u.last_name, u.email
-        FROM student_assignments sa
+        FROM assignment_submissions sa
         JOIN users u ON sa.student_id = u.id
         WHERE sa.assignment_id = $1
         ORDER BY sa.submitted_at DESC
@@ -647,7 +647,7 @@ router.get('/assignments/:assignmentId', auth.authenticateToken, auth.authorizeR
       // Get student's own submission for this assignment
       const submission = await db.get(`
         SELECT sa.*
-        FROM student_assignments sa
+        FROM assignment_submissions sa
         WHERE sa.assignment_id = $1 AND sa.student_id = $2
       `, [assignmentId, req.user.id]);
 
@@ -766,7 +766,7 @@ router.put('/assignments/:assignmentId/grade/:studentId', auth.authenticateToken
     }
 
     await db.run(`
-      UPDATE student_assignments SET
+      UPDATE assignment_submissions SET
         marks_obtained = $1, feedback = $2, grade = $3, graded_at = NOW()
       WHERE assignment_id = $4 AND student_id = $5
     `, [marks_obtained, feedback, grade, assignmentId, studentId]);
