@@ -13,7 +13,7 @@ const db = new Database();
 // ==================== COURSES ====================
 
 // Create course
-router.post('/courses', 
+router.post('/courses',
   auth.authenticateToken,
   auth.authorizeRoles('college_admin', 'super_admin'),
   auth.validateCourseCreation,
@@ -68,7 +68,7 @@ router.post('/courses',
 );
 
 // Get courses for college
-router.get('/courses', 
+router.get('/courses',
   auth.authenticateToken,
   async (req, res) => {
     try {
@@ -136,7 +136,7 @@ router.get('/courses',
 // ==================== CLASSES ====================
 
 // Create class
-router.post('/classes', 
+router.post('/classes',
   auth.authenticateToken,
   auth.authorizeRoles('college_admin', 'teacher'),
   async (req, res) => {
@@ -216,7 +216,7 @@ router.post('/classes',
 );
 
 // Get classes for college
-router.get('/classes', 
+router.get('/classes',
   auth.authenticateToken,
   async (req, res) => {
     try {
@@ -296,7 +296,7 @@ const upload = multer({
     // Allow more file types for mobile submissions
     const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|txt|zip|rar|mp4|mov|avi|ppt|pptx|xls|xlsx|csv|rtf|odt|ods|odp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    
+
     // Be more lenient with MIME types for mobile apps
     const mimetype = file.mimetype && (
       file.mimetype.startsWith('image/') ||
@@ -378,8 +378,8 @@ router.post('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher
         weightage, assignment_type, document_path, created_by, 
         created_at, updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
-    `, [assignmentId, class_id, title, description, due_date, total_marks, 
-         weightage || 0, assignment_type || 'assignment', documentPath, req.user.id]);
+    `, [assignmentId, class_id, title, description, due_date, total_marks,
+      weightage || 0, assignment_type || 'assignment', documentPath, req.user.id]);
 
     console.log('Assignment created successfully:', assignmentId);
 
@@ -405,8 +405,8 @@ router.post('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher
 });
 
 // Submit assignment (student endpoint)
-router.post('/assignments/:assignmentId/submit', 
-  auth.authenticateToken, 
+router.post('/assignments/:assignmentId/submit',
+  auth.authenticateToken,
   auth.authorizeRoles('student'),
   upload.single('file'),
   async (req, res) => {
@@ -502,7 +502,7 @@ router.post('/assignments/:assignmentId/submit',
       });
     } catch (error) {
       console.error('Submit assignment error:', error);
-      
+
       // Handle multer errors specifically
       if (error.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({
@@ -510,14 +510,14 @@ router.post('/assignments/:assignmentId/submit',
           message: 'File size exceeds the 10MB limit'
         });
       }
-      
+
       if (error.message && error.message.includes('File type not allowed')) {
         return res.status(400).json({
           error: 'Invalid file type',
           message: error.message
         });
       }
-      
+
       res.status(500).json({
         error: 'Failed to submit assignment',
         message: 'Internal server error',
@@ -701,8 +701,8 @@ router.put('/assignments/:assignmentId', auth.authenticateToken, auth.authorizeR
         weightage = $5, assignment_type = $6, document_path = $7, status = $8,
         updated_at = NOW()
       WHERE id = $9
-    `, [title, description, due_date, total_marks, weightage, 
-         assignment_type, documentPath, status, assignmentId]);
+    `, [title, description, due_date, total_marks, weightage,
+      assignment_type, documentPath, status, assignmentId]);
 
     res.json({
       message: 'Assignment updated successfully'
@@ -821,7 +821,7 @@ router.get('/assignments/:assignmentId/document', auth.authenticateToken, auth.a
 // ==================== ATTENDANCE ====================
 
 // Mark attendance
-router.post('/attendance', 
+router.post('/attendance',
   auth.authenticateToken,
   auth.authorizeRoles('teacher', 'college_admin'),
   auth.validateAttendance,
@@ -843,7 +843,7 @@ router.post('/attendance',
         SELECT cl.id FROM classes cl 
         WHERE cl.id = $1 AND cl.college_id = $2
       `, [class_id, collegeId]);
-      
+
       if (!classInfo) {
         return res.status(404).json({
           error: 'Class not found',
@@ -910,7 +910,7 @@ router.post('/attendance',
 // ==================== RESULTS ====================
 
 // Add result
-router.post('/results', 
+router.post('/results',
   auth.authenticateToken,
   auth.authorizeRoles('teacher', 'college_admin'),
   auth.validateResult,
@@ -935,7 +935,7 @@ router.post('/results',
         SELECT cl.id FROM classes cl 
         WHERE cl.id = $1 AND cl.college_id = $2
       `, [class_id, collegeId]);
-      
+
       if (!classInfo) {
         return res.status(404).json({
           error: 'Class not found',
@@ -953,8 +953,8 @@ router.post('/results',
         INSERT INTO results (id, class_id, student_id, assignment_id, exam_type, 
                            marks_obtained, total_marks, percentage, grade, remarks)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      `, [resultId, class_id, student_id, assignment_id, exam_type, 
-           marks_obtained, total_marks, percentage, grade, remarks]);
+      `, [resultId, class_id, student_id, assignment_id, exam_type,
+        marks_obtained, total_marks, percentage, grade, remarks]);
 
       const result = await db.get(`
         SELECT r.*, u.first_name, u.last_name as student_name
@@ -978,7 +978,7 @@ router.post('/results',
 );
 
 // Get results for class
-router.get('/classes/:classId/results', 
+router.get('/classes/:classId/results',
   auth.authenticateToken,
   async (req, res) => {
     try {
@@ -991,7 +991,7 @@ router.get('/classes/:classId/results',
         SELECT cl.id FROM classes cl 
         WHERE cl.id = $1 AND cl.college_id = $2
       `, [classId, collegeId]);
-      
+
       if (!classInfo) {
         return res.status(404).json({
           error: 'Class not found',
@@ -1041,7 +1041,7 @@ router.get('/classes/:classId/results',
 );
 
 // Update result
-router.put('/classes/:classId/results/:resultId', 
+router.put('/classes/:classId/results/:resultId',
   auth.authenticateToken,
   auth.authorizeRoles('teacher', 'college_admin'),
   async (req, res) => {
@@ -1063,7 +1063,7 @@ router.put('/classes/:classId/results/:resultId',
         SELECT cl.id FROM classes cl 
         WHERE cl.id = $1 AND cl.college_id = $2
       `, [classId, collegeId]);
-      
+
       if (!classInfo) {
         return res.status(404).json({
           error: 'Class not found',
@@ -1075,7 +1075,7 @@ router.put('/classes/:classId/results/:resultId',
       const existingResult = await db.get(`
         SELECT id FROM results WHERE id = $1 AND class_id = $2
       `, [resultId, classId]);
-      
+
       if (!existingResult) {
         return res.status(404).json({
           error: 'Result not found',
@@ -1093,8 +1093,8 @@ router.put('/classes/:classId/results/:resultId',
           marks_obtained = $4, total_marks = $5, percentage = $6, 
           grade = $7, remarks = $8
         WHERE id = $9
-      `, [student_id, assignment_id, exam_type, marks_obtained, 
-           total_marks, percentage, grade, remarks, resultId]);
+      `, [student_id, assignment_id, exam_type, marks_obtained,
+        total_marks, percentage, grade, remarks, resultId]);
 
       const result = await db.get(`
         SELECT r.*, u.first_name, u.last_name as student_name,
@@ -1120,7 +1120,7 @@ router.put('/classes/:classId/results/:resultId',
 );
 
 // Delete result
-router.delete('/classes/:classId/results/:resultId', 
+router.delete('/classes/:classId/results/:resultId',
   auth.authenticateToken,
   auth.authorizeRoles('teacher', 'college_admin'),
   async (req, res) => {
@@ -1133,7 +1133,7 @@ router.delete('/classes/:classId/results/:resultId',
         SELECT cl.id FROM classes cl 
         WHERE cl.id = $1 AND cl.college_id = $2
       `, [classId, collegeId]);
-      
+
       if (!classInfo) {
         return res.status(404).json({
           error: 'Class not found',
@@ -1145,7 +1145,7 @@ router.delete('/classes/:classId/results/:resultId',
       const existingResult = await db.get(`
         SELECT id FROM results WHERE id = $1 AND class_id = $2
       `, [resultId, classId]);
-      
+
       if (!existingResult) {
         return res.status(404).json({
           error: 'Result not found',
@@ -1172,7 +1172,7 @@ router.delete('/classes/:classId/results/:resultId',
 // ==================== ADMISSIONS ====================
 
 // Get admissions for college
-router.get('/admissions', 
+router.get('/admissions',
   auth.authenticateToken,
   auth.authorizeRoles('college_admin', 'super_admin'),
   async (req, res) => {
@@ -1253,7 +1253,7 @@ router.get('/admissions',
 );
 
 // Create admission inquiry
-router.post('/admissions', 
+router.post('/admissions',
   auth.authenticateToken,
   auth.authorizeRoles('college_admin', 'super_admin'),
   async (req, res) => {
@@ -1321,8 +1321,8 @@ router.post('/admissions',
         INSERT INTO admissions (id, college_id, course_id, student_id, academic_year_id, 
                               application_number, admission_date, documents_submitted, remarks)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      `, [admissionId, collegeId, course_id, student_id, academic_year_id, 
-           application_number, admission_date, documents_submitted, remarks]);
+      `, [admissionId, collegeId, course_id, student_id, academic_year_id,
+        application_number, admission_date, documents_submitted, remarks]);
 
       const admission = await db.get(`
         SELECT a.*, 
@@ -1351,7 +1351,7 @@ router.post('/admissions',
 );
 
 // Update admission status
-router.put('/admissions/:admissionId/status', 
+router.put('/admissions/:admissionId/status',
   auth.authenticateToken,
   auth.authorizeRoles('college_admin', 'super_admin'),
   async (req, res) => {
@@ -1415,7 +1415,7 @@ router.put('/admissions/:admissionId/status',
 );
 
 // Get specific admission
-router.get('/admissions/:admissionId', 
+router.get('/admissions/:admissionId',
   auth.authenticateToken,
   auth.authorizeRoles('college_admin', 'super_admin'),
   async (req, res) => {
@@ -1459,7 +1459,7 @@ router.get('/admissions/:admissionId',
 // ==================== REPORTS & ANALYTICS ====================
 
 // Get attendance report
-router.get('/reports/attendance', 
+router.get('/reports/attendance',
   auth.authenticateToken,
   auth.authorizeRoles('college_admin', 'teacher', 'super_admin'),
   async (req, res) => {
@@ -1532,7 +1532,7 @@ router.get('/reports/attendance',
 );
 
 // Get performance report
-router.get('/reports/performance', 
+router.get('/reports/performance',
   auth.authenticateToken,
   auth.authorizeRoles('college_admin', 'teacher', 'super_admin'),
   async (req, res) => {
@@ -1605,7 +1605,7 @@ router.get('/reports/performance',
 );
 
 // Get enrollment report
-router.get('/reports/enrollment', 
+router.get('/reports/enrollment',
   auth.authenticateToken,
   auth.authorizeRoles('college_admin', 'super_admin'),
   async (req, res) => {
@@ -1660,7 +1660,7 @@ router.get('/reports/enrollment',
 );
 
 // Get financial report
-router.get('/reports/financial', 
+router.get('/reports/financial',
   auth.authenticateToken,
   auth.authorizeRoles('college_admin', 'super_admin'),
   async (req, res) => {
@@ -1720,7 +1720,7 @@ router.get('/reports/financial',
 );
 
 // Get graduation report
-router.get('/reports/graduation', 
+router.get('/reports/graduation',
   auth.authenticateToken,
   auth.authorizeRoles('college_admin', 'super_admin'),
   async (req, res) => {
@@ -1782,7 +1782,7 @@ router.get('/reports/graduation',
 );
 
 // Get analytics dashboard
-router.get('/analytics', 
+router.get('/analytics',
   auth.authenticateToken,
   auth.authorizeRoles('college_admin', 'super_admin'),
   async (req, res) => {
@@ -2429,27 +2429,29 @@ router.get('/students', auth.authenticateToken, auth.authorizeRoles('college_adm
 router.get('/attendance/overview', auth.authenticateToken, auth.authorizeRoles('teacher'), async (req, res) => {
   try {
     const teacherId = req.user.id;
-    
+
     const attendanceData = await db.all(`
-      SELECT 
+   SELECT 
         u.id,
-        u.first_name || ' ' || u.last_name as student_name,
-        c.name as class_name,
-        COUNT(CASE WHEN a.status = 'present' THEN 1 END) as present_count,
-        COUNT(a.id) as total_classes,
-        ROUND(
-          (COUNT(CASE WHEN a.status = 'present' THEN 1 END) * 100.0 / COUNT(a.id)), 2
-        ) as attendance_percentage,
-        MAX(a.date) as last_attendance
-      FROM users u
-      JOIN class_enrollments ce ON u.id = ce.student_id
-      JOIN classes cl ON ce.class_id = cl.id
-      LEFT JOIN attendance a ON u.id = a.student_id AND a.class_id = cl.id
-      WHERE cl.teacher_id = $1 AND u.role = 'student' AND ce.status = 'enrolled'
-      GROUP BY u.id, u.first_name, u.last_name, c.name
-      ORDER BY attendance_percentage ASC
+                u.first_name || ' ' || u.last_name as student_name,
+                cl.name as class_name,
+                COUNT(CASE WHEN a.status = 'present' THEN 1 END) as present_count,
+                COUNT(a.id) as total_classes,
+                CASE 
+                  WHEN COUNT(a.id) > 0 THEN 
+                    ROUND((COUNT(CASE WHEN a.status = 'present' THEN 1 END) * 100.0 / COUNT(a.id)), 2)
+                      ELSE 0
+                      END as attendance_percentage,
+                       MAX(a.date) as last_attendance
+                        FROM users u
+                        JOIN class_enrollments ce ON u.id = ce.student_id
+                        JOIN classes cl ON ce.class_id = cl.id
+                        LEFT JOIN attendance a ON u.id = a.student_id AND a.class_id = cl.id
+                        WHERE cl.teacher_id = $1 AND u.role = 'student' AND ce.status = 'enrolled'
+                  GROUP BY u.id, u.first_name, u.last_name, cl.name
+          ORDER BY attendance_percentage ASC
     `, [teacherId]);
-    
+
     res.json({
       success: true,
       attendance: attendanceData || []
@@ -2467,16 +2469,16 @@ router.get('/attendance/overview', auth.authenticateToken, auth.authorizeRoles('
 router.get('/assignments/pending-grading', auth.authenticateToken, auth.authorizeRoles('teacher'), async (req, res) => {
   try {
     const teacherId = req.user.id;
-    
+
     const pendingAssignments = await db.all(`
       SELECT 
         s.id,
         u.first_name || ' ' || u.last_name as student_name,
         a.title as assignment_title,
         c.name as class_name,
-        s.submitted_date,
+        s.submission_date,
         s.status,
-        s.grade_percentage,
+        s.marks_obtained,
         s.feedback
       FROM assignment_submissions s
       JOIN users u ON s.student_id = u.id
@@ -2484,9 +2486,9 @@ router.get('/assignments/pending-grading', auth.authenticateToken, auth.authoriz
       JOIN classes cl ON a.class_id = cl.id
       JOIN courses c ON cl.course_id = c.id
       WHERE cl.teacher_id = $1 AND s.status = 'submitted'
-      ORDER BY s.submitted_date DESC
+      ORDER BY s.submission_date DESC
     `, [teacherId]);
-    
+
     res.json({
       success: true,
       assignments: pendingAssignments || []
@@ -2506,7 +2508,7 @@ router.post('/submissions/:id/grade', auth.authenticateToken, auth.authorizeRole
     const { id } = req.params;
     const { grade_percentage, feedback, status } = req.body;
     const teacherId = req.user.id;
-    
+
     // Verify teacher owns this assignment
     const submission = await db.get(`
       SELECT s.*, a.title, cl.teacher_id
@@ -2515,27 +2517,27 @@ router.post('/submissions/:id/grade', auth.authenticateToken, auth.authorizeRole
       JOIN classes cl ON a.class_id = cl.id
       WHERE s.id = $1 AND cl.teacher_id = $2
     `, [id, teacherId]);
-    
+
     if (!submission) {
       return res.status(404).json({
         success: false,
         error: 'Submission not found or access denied'
       });
     }
-    
+
     // Update submission
     await db.run(`
       UPDATE assignment_submissions 
       SET grade_percentage = $1, feedback = $2, status = $3, graded_at = NOW()
       WHERE id = ?
     `, [grade_percentage, feedback, status, id]);
-    
+
     // Create grade record
     await db.run(`
       INSERT INTO grades (assignment_id, student_id, grade_percentage, feedback, graded_by, status)
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [submission.assignment_id, submission.student_id, grade_percentage, feedback, teacherId, 'active']);
-    
+
     res.json({
       success: true,
       message: 'Assignment graded successfully'
@@ -2567,7 +2569,7 @@ const createAdmissionInquiriesTable = async () => {
 createAdmissionInquiriesTable();
 
 // Get admission inquiries for college admin
-router.get('/admission-inquiries', 
+router.get('/admission-inquiries',
   auth.authenticateToken,
   auth.authorizeRoles('college_admin', 'super_admin'),
   async (req, res) => {
@@ -2621,16 +2623,16 @@ router.get('/admission-inquiries',
       });
     } catch (error) {
       console.error('Get admission inquiries error:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Failed to load admission inquiries',
-        message: error.message 
+        message: error.message
       });
     }
   }
 );
 
 // Get specific admission inquiry details
-router.get('/admission-inquiries/:id', 
+router.get('/admission-inquiries/:id',
   auth.authenticateToken,
   auth.authorizeRoles('college_admin', 'super_admin'),
   async (req, res) => {
@@ -2653,9 +2655,9 @@ router.get('/admission-inquiries/:id',
       res.json({ inquiry });
     } catch (error) {
       console.error('Get admission inquiry details error:', error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: 'Failed to load inquiry details',
-        message: error.message 
+        message: error.message
       });
     }
   }
