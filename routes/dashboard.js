@@ -694,9 +694,9 @@ router.get('/teacher/notifications', auth.authenticateToken, auth.authorizeRoles
         n.message,
         n.type,
         n.created_at,
-        n.read_status
+        n.is_read
       FROM notifications n
-      WHERE n.recipient_id = $1 AND n.recipient_type = 'teacher'
+      WHERE n.user_id = $1
       ORDER BY n.created_at DESC
       LIMIT 20
     `, [teacherId]);
@@ -722,8 +722,8 @@ router.put('/teacher/notifications/:id/read', auth.authenticateToken, auth.autho
     
     await db.run(`
       UPDATE notifications 
-      SET read_status = 'read' 
-      WHERE id = $1 AND recipient_id = $2 AND recipient_type = 'teacher'
+      SET is_read = 'read' 
+      WHERE id = $1 AND user_id = $2
     `, [id, teacherId]);
     
     res.json({
