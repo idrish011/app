@@ -2469,7 +2469,8 @@ router.get('/attendance/overview', auth.authenticateToken, auth.authorizeRoles('
 router.get('/assignments/pending-grading', auth.authenticateToken, auth.authorizeRoles('teacher'), async (req, res) => {
   try {
     const teacherId = req.user.id;
-
+    console.error('Pending grading teacherId:', teacherId);
+    // Get pending grading assignments
     const pendingAssignments = await db.all(`
       SELECT 
         s.id,
@@ -2488,7 +2489,7 @@ router.get('/assignments/pending-grading', auth.authenticateToken, auth.authoriz
       WHERE cl.teacher_id = $1 AND s.status = 'submitted'
       ORDER BY s.submission_date DESC
     `, [teacherId]);
-
+    console.error('Pending grading pendingAssignments:', pendingAssignments);
     res.json({
       success: true,
       assignments: pendingAssignments || []
