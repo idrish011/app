@@ -84,7 +84,7 @@ class PushNotificationService {
   async sendNotificationToUsers(userIds, title, body, data = {}) {
     try {
       // Get user tokens using parameterized query
-      const placeholders = userIds.map(() => '?').join(',');
+      const placeholders = userIds.map((_, i) => `${i + 1}`).join(',');
       const query = `
         SELECT id, push_token FROM users 
         WHERE id IN (${placeholders}) AND push_token IS NOT NULL
@@ -151,7 +151,7 @@ class PushNotificationService {
       // Get all users in college with push tokens using parameterized query
       const users = await this.db.all(`
         SELECT id, push_token FROM users 
-        WHERE college_id = ? AND push_token IS NOT NULL
+        WHERE college_id = $1 AND push_token IS NOT NULL
       `, [collegeId]);
 
       if (users.length === 0) {
@@ -216,7 +216,7 @@ class PushNotificationService {
         SELECT u.id, u.push_token 
         FROM users u
         JOIN class_enrollments ce ON u.id = ce.student_id
-        WHERE ce.class_id = ? AND u.push_token IS NOT NULL
+        WHERE ce.class_id = $1 AND u.push_token IS NOT NULL
       `, [classId]);
 
       if (students.length === 0) {
@@ -279,7 +279,7 @@ class PushNotificationService {
       // Get teachers with push tokens using parameterized query
       const teachers = await this.db.all(`
         SELECT id, push_token FROM users 
-        WHERE college_id = ? AND role = 'teacher' AND push_token IS NOT NULL
+        WHERE college_id = $1 AND role = 'teacher' AND push_token IS NOT NULL
       `, [collegeId]);
 
       if (teachers.length === 0) {
@@ -342,7 +342,7 @@ class PushNotificationService {
       // Get students with push tokens using parameterized query
       const students = await this.db.all(`
         SELECT id, push_token FROM users 
-        WHERE college_id = ? AND role = 'student' AND push_token IS NOT NULL
+        WHERE college_id = $1 AND role = 'student' AND push_token IS NOT NULL
       `, [collegeId]);
 
       if (students.length === 0) {

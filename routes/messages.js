@@ -100,7 +100,7 @@ router.post('/',
           id, title, content, type, priority, sender_id, sender_name,
           target_type, target_ids, attachments, expires_at, created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
-      `, [
+      `, [ 
         messageId, title, content, type, priority, senderId, senderName,
         target_type, parsedTargetIds, attachments, expires_at
       ]);
