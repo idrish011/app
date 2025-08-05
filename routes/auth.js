@@ -554,8 +554,7 @@ router.get('/profile', auth.authenticateToken, async (req, res) => {
       error: 'Profile retrieval failed',
       message: 'Internal server error while retrieving profile'
     });
-  }
-});
+  }n});
 
 // Update user profile
 router.put('/profile', auth.authenticateToken, async (req, res) => {
@@ -595,7 +594,7 @@ router.put('/profile', auth.authenticateToken, async (req, res) => {
   }
 });
 
-// Save or update Expo push token for the logged-in user
+// Save or update push token for the logged-in user
 router.post('/users/push-token', auth.authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;

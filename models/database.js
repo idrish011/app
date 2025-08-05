@@ -59,6 +59,7 @@ class Database {
         address TEXT,
         date_of_birth DATE,
         gender TEXT,
+        push_token TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (college_id) REFERENCES colleges (id),
