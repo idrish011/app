@@ -388,23 +388,23 @@ async function getTeacherStats(teacherId, collegeId) {
     }
 
     // Create placeholders for parameterized query
-    const placeholders = classIds.map((_, i) => `${i + 1}`).join(',');
+    const placeholders = classIds.map(id => `'${id}'`).join(',');;
     
     // Get total students in teacher's classes using parameterized query
     const totalStudents = await db.get(
-      `SELECT COUNT(DISTINCT student_id) as count FROM class_enrollments WHERE class_id IN (${classIds})`,
+      `SELECT COUNT(DISTINCT student_id) as count FROM class_enrollments WHERE class_id IN (${placeholders})`,
       classIds
     );
     
     // Get total assignments
     const totalAssignments = await db.get(
-      `SELECT COUNT(*) as count FROM assignments WHERE class_id IN (${classIds})`,
+      `SELECT COUNT(*) as count FROM assignments WHERE class_id IN (${placeholders})`,
       classIds
     );
     
     // Get average attendance
     const averageAttendance = await db.get(
-      `SELECT AVG(CASE WHEN status = 'present' THEN 100 ELSE 0 END) as average FROM attendance WHERE class_id IN (${classIds})`,
+      `SELECT AVG(CASE WHEN status = 'present' THEN 100 ELSE 0 END) as average FROM attendance WHERE class_id IN (${placeholders})`,
       classIds
     );
 
