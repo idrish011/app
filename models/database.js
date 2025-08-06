@@ -67,6 +67,9 @@ class Database {
       )
     `);
 
+    // Add push_token column to users table if it doesn't exist
+    await runAsync(`ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT`);
+
     // Courses table
     await runAsync(`
       CREATE TABLE IF NOT EXISTS courses (

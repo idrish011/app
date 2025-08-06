@@ -411,8 +411,8 @@ async function getTeacherStats(teacherId, collegeId) {
     return {
       total_classes: classIds.length,
       total_students: totalStudents.count,
-      total_assignments: totalAssignments.count,
-      average_attendance: averageAttendance.average || 0
+      //total_assignments: totalAssignments.count,
+      //average_attendance: averageAttendance.average || 0
     };
   } catch (error) {
     console.error('Teacher stats error:', error);

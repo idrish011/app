@@ -130,7 +130,7 @@ router.post('/',
           const targetIds = JSON.parse(target_ids);
           const targetPlaceholders = targetIds.map((_, index) => `$${classIds.length + index + 1}`).join(',');
           recipients = await db.all(`
-            SELECT u.id, u.first_name, u.last_name, u.email, u.push_token
+            SELECT u.id, u.first_name, u.last_name, u.email, u.push_token 
             FROM users u
             JOIN class_enrollments ce ON u.id = ce.student_id
             WHERE ce.class_id IN (${classPlaceholders}) AND u.id IN (${targetPlaceholders})
