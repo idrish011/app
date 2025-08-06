@@ -572,8 +572,7 @@ router.get('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher'
           sa.status as submission_status,
           sa.submission_date,
           sa.marks_obtained,
-          sa.feedback,
-          sa.grade
+          sa.feedback
         FROM assignments a
         JOIN classes c ON a.class_id = c.id
         JOIN class_enrollments ce ON c.id = ce.class_id
