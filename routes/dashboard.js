@@ -415,6 +415,7 @@ async function getTeacherStats(teacherId, collegeId) {
       //average_attendance: averageAttendance.average || 0
     };
   } catch (error) {
+    console.error('Teacher stats placeholders:', placeholders);
     console.error('Teacher stats error:', error);
     throw error;
   }
