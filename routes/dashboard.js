@@ -442,7 +442,7 @@ async function getStudentStats(studentId, collegeId) {
     }
 
     // Create placeholders for parameterized query
-    const placeholders = classIds.map((_, i) => `${i + 2}`).join(',');
+    const placeholders = classIds.map((_, i) => `$${i + 1}`).join(',');
     
     // Get total courses using parameterized query
     const totalCourses = await db.get(
@@ -498,7 +498,7 @@ async function getParentStats(parentId, collegeId) {
     }
 
     const childIds = children.map(child => child.id);
-    const placeholders = childIds.map((_, i) => `${i + 1}`).join(',');
+    const placeholders = childIds.map((_, i) => `$${i + 1}`).join(',');
     
     // Get children's grades
     const childrenGrades = await db.all(

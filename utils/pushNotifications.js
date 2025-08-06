@@ -84,7 +84,7 @@ class PushNotificationService {
   async sendNotificationToUsers(userIds, title, body, data = {}) {
     try {
       // Get user tokens using parameterized query
-      const placeholders = userIds.map((_, i) => `${i + 1}`).join(',');
+      const placeholders = userIds.map((_, i) => `$${i + 1}`).join(',');
       const query = `
         SELECT id, push_token FROM users 
         WHERE id IN (${placeholders}) AND push_token IS NOT NULL
