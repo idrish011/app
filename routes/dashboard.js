@@ -392,30 +392,29 @@ async function getTeacherStats(teacherId, collegeId) {
     
     // Get total students in teacher's classes using parameterized query
     const totalStudents = await db.get(
-      `SELECT COUNT(DISTINCT student_id) as count FROM class_enrollments WHERE class_id IN (${placeholders})`,
+      `SELECT COUNT(DISTINCT student_id) as count FROM class_enrollments WHERE class_id IN (${classIds})`,
       classIds
     );
     
     // Get total assignments
     const totalAssignments = await db.get(
-      `SELECT COUNT(*) as count FROM assignments WHERE class_id IN (${placeholders})`,
+      `SELECT COUNT(*) as count FROM assignments WHERE class_id IN (${classIds})`,
       classIds
     );
     
     // Get average attendance
-    // const averageAttendance = await db.get(
-    //   `SELECT AVG(CASE WHEN status = 'present' THEN 100 ELSE 0 END) as average FROM attendance WHERE class_id IN (${placeholders})`,
-    //   classIds
-    // );
+    const averageAttendance = await db.get(
+      `SELECT AVG(CASE WHEN status = 'present' THEN 100 ELSE 0 END) as average FROM attendance WHERE class_id IN (${classIds})`,
+      classIds
+    );
 
     return {
       total_classes: classIds.length,
       total_students: totalStudents.count,
-      total_assignments: totalAssignments.count
-      //average_attendance: averageAttendance.average || 0
+      total_assignments: totalAssignments.count,
+      average_attendance: averageAttendance.average || 0
     };
   } catch (error) {
-    console.error('Teacher stats placeholders:', placeholders);
     console.error('Teacher stats error:', error);
     throw error;
   }
