@@ -86,12 +86,12 @@ router.get('/courses',
       let paramIndex = 2;
 
       if (search) {
-        query += ` AND (c.name LIKE $${paramIndex} OR c.code LIKE $${paramIndex + 1})`;
+        query += ` AND (c.name LIKE ${paramIndex} OR c.code LIKE ${paramIndex + 1})`;
         params.push(`%${search}%`, `%${search}%`);
         paramIndex += 2;
       }
 
-      query += ` GROUP BY c.id, c.name, c.code, c.description, c.credits, c.duration_months, c.fee_amount, c.status, c.college_id, c.created_at ORDER BY c.name LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      query += ` GROUP BY c.id, c.name, c.code, c.description, c.credits, c.duration_months, c.fee_amount, c.status, c.college_id, c.created_at ORDER BY c.name LIMIT ${paramIndex} OFFSET ${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
 
       const courses = await db.all(query, params);
@@ -106,7 +106,7 @@ router.get('/courses',
       let countParamIndex = 2;
 
       if (search) {
-        countQuery += ` AND (c.name LIKE $${countParamIndex} OR c.code LIKE $${countParamIndex + 1})`;
+        countQuery += ` AND (c.name LIKE ${countParamIndex} OR c.code LIKE ${countParamIndex + 1})`;
         countParams.push(`%${search}%`, `%${search}%`);
         countParamIndex += 2;
       }
@@ -175,7 +175,7 @@ router.post('/classes',
 
       // Verify teacher belongs to this college
       const teacher = await db.get(
-        'SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = \'teacher\'',
+        `SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = 'teacher'`,
         [teacher_id, collegeId]
       );
       if (!teacher) {
@@ -238,24 +238,24 @@ router.get('/classes',
       let paramIndex = 2;
 
       if (course_id) {
-        query += ` AND cl.course_id = $${paramIndex}`;
+        query += ` AND cl.course_id = ${paramIndex}`;
         params.push(course_id);
         paramIndex++;
       }
 
       if (teacher_id) {
-        query += ` AND cl.teacher_id = $${paramIndex}`;
+        query += ` AND cl.teacher_id = ${paramIndex}`;
         params.push(teacher_id);
         paramIndex++;
       }
 
       if (search) {
-        query += ` AND (cl.name LIKE $${paramIndex} OR c.name LIKE $${paramIndex + 1})`;
+        query += ` AND (cl.name LIKE ${paramIndex} OR c.name LIKE ${paramIndex + 1})`;
         params.push(`%${search}%`, `%${search}%`);
         paramIndex += 2;
       }
 
-      query += ` GROUP BY cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, cl.max_students, cl.status, cl.college_id, cl.created_at, c.name, u.first_name, u.last_name ORDER BY cl.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      query += ` GROUP BY cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, cl.max_students, cl.status, cl.college_id, cl.created_at, c.name, u.first_name, u.last_name ORDER BY cl.created_at DESC LIMIT ${paramIndex} OFFSET ${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
 
       const classes = await db.all(query, params);
@@ -537,13 +537,13 @@ router.get('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher'
       let paramIndex = 2;
 
       if (class_id) {
-        whereClause += ` AND a.class_id = $${paramIndex}`;
+        whereClause += ` AND a.class_id = ${paramIndex}`;
         params.push(class_id);
         paramIndex++;
       }
 
       if (status) {
-        whereClause += ` AND a.status = $${paramIndex}`;
+        whereClause += ` AND a.status = ${paramIndex}`;
         params.push(status);
         paramIndex++;
       }
@@ -1010,13 +1010,13 @@ router.get('/classes/:classId/results',
       let paramIndex = 2;
 
       if (student_id) {
-        query += ` AND r.student_id = $${paramIndex}`;
+        query += ` AND r.student_id = ${paramIndex}`;
         params.push(student_id);
         paramIndex++;
       }
 
       if (exam_type) {
-        query += ` AND r.exam_type = $${paramIndex}`;
+        query += ` AND r.exam_type = ${paramIndex}`;
         params.push(exam_type);
         paramIndex++;
       }
@@ -1194,7 +1194,7 @@ router.get('/admissions',
       const params = [collegeId];
 
       if (search) {
-        query += ' AND (u.first_name LIKE $1 OR u.last_name LIKE $2 OR u.email LIKE $3 OR a.application_number LIKE $4)';
+        query += ' AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ? OR a.application_number LIKE ?)';
         const searchTerm = `%${search}%`;
         params.push(searchTerm, searchTerm, searchTerm, searchTerm);
       }
@@ -1291,7 +1291,7 @@ router.post('/admissions',
 
       // Verify student belongs to this college
       const student = await db.get(
-        'SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = \'student\'',
+        `SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = 'student'`,
         [student_id, collegeId]
       );
       if (!student) {
@@ -1896,7 +1896,7 @@ router.get('/classes/:classId/attendance', auth.authenticateToken, auth.authoriz
     if (req.user.role === 'teacher') {
       // Verify teacher owns this class
       const classExists = await db.get(`
-        SELECT * FROM classes WHERE id = $1 AND teacher_id = $2
+        SELECT * FROM classes WHERE id = ? AND teacher_id = ?
       `, [classId, req.user.id]);
 
       if (!classExists) {
@@ -2353,9 +2353,9 @@ router.post('/classes/:classId/enroll-students', auth.authenticateToken, auth.au
     let enrolled = 0;
     for (const student_id of student_ids) {
       // Verify student belongs to this college
-      const student = await db.get('SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = \'student\'', [student_id, collegeId]);
+      const student = await db.get(`SELECT id FROM users WHERE id = $1 AND college_id = $2 AND role = 'student'`, [student_id, collegeId]);
       if (student) {
-        await db.run('INSERT INTO class_enrollments (id, class_id, student_id, enrollment_date, status, created_at) VALUES ($1, $2, $3, NOW(), \'enrolled\', NOW()) ON CONFLICT (class_id, student_id) DO NOTHING', [uuidv4(), classId, student_id]);
+        await db.run(`INSERT INTO class_enrollments (id, class_id, student_id, enrollment_date, status, created_at) VALUES ($1, $2, $3, NOW(), 'enrolled', NOW()) ON CONFLICT (class_id, student_id) DO NOTHING`, [uuidv4(), classId, student_id]);
         enrolled++;
       }
     }
@@ -2390,7 +2390,7 @@ router.get('/classes/:classId/students', auth.authenticateToken, auth.authorizeR
     // Verify class belongs to this college
     const classInfo = await db.get('SELECT * FROM classes WHERE id = $1 AND college_id = $2', [classId, collegeId]);
     if (!classInfo) return res.status(404).json({ error: 'Class not found', message: 'Class does not exist in this college' });
-    const students = await db.all('SELECT u.id, u.first_name, u.last_name, u.email, u.profile_image FROM class_enrollments ce JOIN users u ON ce.student_id = u.id WHERE ce.class_id = $1 AND ce.status = \'enrolled\'', [classId]);
+    const students = await db.all(`SELECT u.id, u.first_name, u.last_name, u.email, u.profile_image FROM class_enrollments ce JOIN users u ON ce.student_id = u.id WHERE ce.class_id = $1 AND ce.status = 'enrolled'`, [classId]);
     res.json({ students });
   } catch (error) {
     console.error('List students error:', error);
@@ -2404,7 +2404,7 @@ router.get('/classes/:classId/students', auth.authenticateToken, auth.authorizeR
 router.get('/teachers', auth.authenticateToken, auth.authorizeRoles('college_admin'), async (req, res) => {
   try {
     const collegeId = req.user.college_id;
-    const teachers = await db.all('SELECT id, first_name, last_name, email, profile_image FROM users WHERE college_id = $1 AND role = \'teacher\'', [collegeId]);
+    const teachers = await db.all(`SELECT id, first_name, last_name, email, profile_image FROM users WHERE college_id = $1 AND role = 'teacher'`, [collegeId]);
     res.json({ teachers });
   } catch (error) {
     console.error('List teachers error:', error);
@@ -2416,7 +2416,7 @@ router.get('/teachers', auth.authenticateToken, auth.authorizeRoles('college_adm
 router.get('/students', auth.authenticateToken, auth.authorizeRoles('college_admin'), async (req, res) => {
   try {
     const collegeId = req.user.college_id;
-    const students = await db.all('SELECT id, first_name, last_name, email, profile_image FROM users WHERE college_id = $1 AND role = \'student\'', [collegeId]);
+    const students = await db.all(`SELECT id, first_name, last_name, email, profile_image FROM users WHERE college_id = $1 AND role = 'student'`, [collegeId]);
     res.json({ students });
   } catch (error) {
     console.error('List students error:', error);
@@ -2529,7 +2529,7 @@ router.post('/submissions/:id/grade', auth.authenticateToken, auth.authorizeRole
     await db.run(`
       UPDATE assignment_submissions 
       SET grade_percentage = $1, feedback = $2, status = $3, graded_at = NOW()
-      WHERE id = ?
+      WHERE id = $4
     `, [grade_percentage, feedback, status, id]);
 
     // Create grade record
