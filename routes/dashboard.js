@@ -403,15 +403,15 @@ async function getTeacherStats(teacherId, collegeId) {
     );
     
     // Get average attendance
-    const averageAttendance = await db.get(
-      `SELECT AVG(CASE WHEN status = 'present' THEN 100 ELSE 0 END) as average FROM attendance WHERE class_id IN (${placeholders})`,
-      classIds
-    );
+    // const averageAttendance = await db.get(
+    //   `SELECT AVG(CASE WHEN status = 'present' THEN 100 ELSE 0 END) as average FROM attendance WHERE class_id IN (${placeholders})`,
+    //   classIds
+    // );
 
     return {
       total_classes: classIds.length,
-      total_students: totalStudents.count
-      //total_assignments: totalAssignments.count,
+      total_students: totalStudents.count,
+      total_assignments: totalAssignments.count
       //average_attendance: averageAttendance.average || 0
     };
   } catch (error) {
