@@ -388,7 +388,7 @@ async function getTeacherStats(teacherId, collegeId) {
     }
 
     // Create placeholders for parameterized query
-    const placeholders = classIds.map(id => `${i + 1}`).join(',');;
+    const placeholders = classIds.map((_, i) => `${i + 1}`).join(',');;
     console.error('Teacher stats placeholders:', placeholders);
      console.error('Teacher stats classIds:', classIds);
     // Get total students in teacher's classes using parameterized query
