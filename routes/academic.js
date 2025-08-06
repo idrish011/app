@@ -1194,7 +1194,7 @@ router.get('/admissions',
       const params = [collegeId];
 
       if (search) {
-        query += ' AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ? OR a.application_number LIKE ?)';
+        query += ' AND (u.first_name LIKE $1 OR u.last_name LIKE $2 OR u.email LIKE $3 OR a.application_number LIKE $4)';
         const searchTerm = `%${search}%`;
         params.push(searchTerm, searchTerm, searchTerm, searchTerm);
       }
@@ -1896,7 +1896,7 @@ router.get('/classes/:classId/attendance', auth.authenticateToken, auth.authoriz
     if (req.user.role === 'teacher') {
       // Verify teacher owns this class
       const classExists = await db.get(`
-        SELECT * FROM classes WHERE id = ? AND teacher_id = ?
+        SELECT * FROM classes WHERE id = $1 AND teacher_id = $2
       `, [classId, req.user.id]);
 
       if (!classExists) {
