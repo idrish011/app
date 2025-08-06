@@ -473,7 +473,7 @@ router.post('/assignments/:assignmentId/submit',
       // Create submission record
       await db.run(`
         INSERT INTO assignment_submissions (
-          id, assignment_id, student_id, submitted_at, 
+          id, assignment_id, student_id, submission_date, 
           document_path, remarks, status
         ) VALUES ($1, $2, $3, NOW(), $4, $5, $6)
       `, [submissionId, assignmentId, studentId, documentPath, remarks, status]);
@@ -570,7 +570,7 @@ router.get('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher'
           a.*, 
           c.name as class_name,
           sa.status as submission_status,
-          sa.submitted_at,
+          sa.submission_date,
           sa.marks_obtained,
           sa.feedback,
           sa.grade
@@ -620,7 +620,7 @@ router.get('/assignments/:assignmentId', auth.authenticateToken, auth.authorizeR
         FROM assignment_submissions sa
         JOIN users u ON sa.student_id = u.id
         WHERE sa.assignment_id = $1
-        ORDER BY sa.submitted_at DESC
+        ORDER BY sa.submission_date DESC
       `, [assignmentId]);
 
       res.json({
