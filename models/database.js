@@ -476,6 +476,41 @@ class Database {
       )
     `);
 
+    // Messages table
+    await runAsync(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id UUID PRIMARY KEY,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        type TEXT DEFAULT 'announcement',
+        priority TEXT DEFAULT 'normal',
+        sender_id UUID NOT NULL,
+        sender_name TEXT,
+        target_type TEXT DEFAULT 'all',
+        target_ids JSONB,
+        attachments JSONB,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (sender_id) REFERENCES users (id)
+      )
+    `);
+
+    // Message Recipients table
+    await runAsync(`
+      CREATE TABLE IF NOT EXISTS message_recipients (
+        id UUID PRIMARY KEY,
+        message_id UUID NOT NULL,
+        recipient_id UUID NOT NULL,
+        is_read INTEGER DEFAULT 0,
+        read_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (message_id) REFERENCES messages (id) ON DELETE CASCADE,
+        FOREIGN KEY (recipient_id) REFERENCES users (id) ON DELETE CASCADE,
+        UNIQUE(message_id, recipient_id)
+      )
+    `);
+
     console.log('Multi-tenant SaaS database schema initialized successfully (PostgreSQL)');
     return true;
   }

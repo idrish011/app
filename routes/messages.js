@@ -284,6 +284,29 @@ router.get('/', auth.authenticateToken, async (req, res) => {
   }
 });
 
+// Get unread message count
+router.get('/unread/count', auth.authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await db.get(`
+      SELECT COUNT(*) as unread_count
+      FROM message_recipients
+      WHERE recipient_id = $1 AND is_read = 0
+    `, [userId]);
+
+    res.json({
+      unread_count: result.unread_count || 0
+    });
+  } catch (error) {
+    console.error('Get unread message count error:', error);
+    res.status(500).json({
+      error: 'Failed to fetch unread message count',
+      message: 'Internal server error'
+    });
+  }
+});
+
 // Get specific message
 router.get('/:messageId', auth.authenticateToken, async (req, res) => {
   try {
@@ -388,4 +411,4 @@ router.delete('/:messageId', auth.authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;
