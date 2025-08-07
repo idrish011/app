@@ -2581,34 +2581,36 @@ router.get('/admission-inquiries',
       const offset = (page - 1) * limit;
       const collegeId = req.user.college_id;
 
-      const params = [collegeId];
       let query = `
         SELECT * FROM admission_inquiries 
         WHERE college_id = $1
       `;
+      const params = [collegeId];
+      let paramIndex = 2;
 
       if (search) {
+        query += ` AND (name LIKE ${paramIndex++} OR email LIKE ${paramIndex++} OR phone LIKE ${paramIndex++} OR message LIKE ${paramIndex++})`;
         const searchTerm = `%${search}%`;
-        query += ' AND (name LIKE $2 OR email LIKE $3 OR phone LIKE $4 OR message LIKE $5)';
         params.push(searchTerm, searchTerm, searchTerm, searchTerm);
       }
 
-      query += ` ORDER BY created_at DESC LIMIT ${params.length + 1} OFFSET ${params.length + 2}`;
+      query += ` ORDER BY created_at DESC LIMIT ${paramIndex++} OFFSET ${paramIndex++}`;
       params.push(limit, offset);
 
       const inquiries = await db.all(query, params);
 
       // Get total count
-      const countParams = [collegeId];
       let countQuery = `
         SELECT COUNT(*) as total 
         FROM admission_inquiries 
         WHERE college_id = $1
       `;
+      const countParams = [collegeId];
+      let countParamIndex = 2;
 
       if (search) {
+        countQuery += ` AND (name LIKE ${countParamIndex++} OR email LIKE ${countParamIndex++} OR phone LIKE ${countParamIndex++} OR message LIKE ${countParamIndex++})`;
         const searchTerm = `%${search}%`;
-        countQuery += ' AND (name LIKE $2 OR email LIKE $3 OR phone LIKE $4 OR message LIKE $5)';
         countParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
       }
 
