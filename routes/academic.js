@@ -238,24 +238,26 @@ router.get('/classes',
       let paramIndex = 2;
 
       if (course_id) {
-        query += ` AND cl.course_id = ${paramIndex}`;
+        query += ` AND cl.course_id = $${paramIndex}`;
         params.push(course_id);
         paramIndex++;
       }
 
       if (teacher_id) {
-        query += ` AND cl.teacher_id = ${paramIndex}`;
+        query += ` AND cl.teacher_id = $${paramIndex}`;
         params.push(teacher_id);
         paramIndex++;
       }
 
       if (search) {
-        query += ` AND (cl.name LIKE ${paramIndex} OR c.name LIKE ${paramIndex + 1})`;
+        query += ` AND (cl.name LIKE $${paramIndex} OR c.name LIKE $${paramIndex + 1})`;
         params.push(`%${search}%`, `%${search}%`);
         paramIndex += 2;
       }
 
-      query += `GROUP BY cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, cl.max_students, cl.status, cl.college_id, cl.created_at, c.name, u.first_name, u.last_name ORDER BY cl.created_at DESC LIMIT ${paramIndex} OFFSET ${paramIndex + 1}`;
+      query += `GROUP BY cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, 
+      cl.max_students, cl.status, cl.college_id, cl.created_at, c.name, u.first_name, u.last_name ORDER BY 
+      cl.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
       console.error('Class retrieval query:', query);
       console.error('Class retrieval params:', params);
