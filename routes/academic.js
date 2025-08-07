@@ -540,13 +540,13 @@ router.get('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher'
       let paramIndex = 2;
 
       if (class_id) {
-        whereClause += ` AND a.class_id = ${paramIndex}`;
+        whereClause += ` AND a.class_id = $${paramIndex}`;
         params.push(class_id);
         paramIndex++;
       }
 
       if (status) {
-        whereClause += ` AND a.status = ${paramIndex}`;
+        whereClause += ` AND a.status = $${paramIndex}`;
         params.push(status);
         paramIndex++;
       }

@@ -47,7 +47,7 @@ const upload = multer({
 // ==================== MESSAGES API ====================
 
 // Send message (admin, teacher, college_admin)
-router.post('/', 
+router.post('/',
   auth.authenticateToken,
   auth.authorizeRoles('teacher', 'college_admin', 'super_admin'),
   upload.array('attachments', 5), // Allow up to 5 attachments
@@ -100,7 +100,7 @@ router.post('/',
           id, title, content, type, priority, sender_id, sender_name,
           target_type, target_ids, attachments, expires_at, created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
-      `, [ 
+      `, [
         messageId, title, content, type, priority, senderId, senderName,
         target_type, parsedTargetIds, attachments, expires_at
       ]);
@@ -306,7 +306,26 @@ router.get('/unread/count', auth.authenticateToken, async (req, res) => {
     });
   }
 });
-
+// Get sent messages by 
+router.get('/sent', auth.authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const message = await db.get(`SELECT * FROM messages WHERE sender_id =$1`, [userId]);
+    if (!message) {
+      return res.status(404).json({
+        error: 'Message not found',
+        message: 'Message not found or you do not have access to it'
+      });
+    }
+    return res.json({ message });
+  } catch (error) {
+    console.error('Get message error:', error);
+    res.status(500).json({
+      error: 'Failed to fetch message',
+      message: 'Internal server error while fetching message'
+    });
+  }
+});
 // Get specific message
 router.get('/:messageId', auth.authenticateToken, async (req, res) => {
   try {
