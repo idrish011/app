@@ -106,7 +106,7 @@ router.get('/courses',
       let countParamIndex = 2;
 
       if (search) {
-        countQuery += ` AND (c.name LIKE ${countParamIndex} OR c.code LIKE ${countParamIndex + 1})`;
+        countQuery += ` AND (c.name LIKE $${countParamIndex} OR c.code LIKE $${countParamIndex + 1})`;
         countParams.push(`%${search}%`, `%${search}%`);
         countParamIndex += 2;
       }
@@ -238,26 +238,26 @@ router.get('/classes',
       let paramIndex = 2;
 
       if (course_id) {
-        query += ` AND cl.course_id = ${paramIndex}`;
+        query += ` AND cl.course_id = $${paramIndex}`;
         params.push(course_id);
         paramIndex++;
       }
 
       if (teacher_id) {
-        query += ` AND cl.teacher_id = ${paramIndex}`;
+        query += ` AND cl.teacher_id = $${paramIndex}`;
         params.push(teacher_id);
         paramIndex++;
       }
 
       if (search) {
-        query += ` AND (cl.name LIKE ${paramIndex} OR c.name LIKE ${paramIndex + 1})`;
+        query += ` AND (cl.name LIKE $${paramIndex} OR c.name LIKE $${paramIndex + 1})`;
         params.push(`%${search}%`, `%${search}%`);
         paramIndex += 2;
       }
 
       query += `GROUP BY cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, 
       cl.max_students, cl.status, cl.college_id, cl.created_at, c.name, u.first_name, u.last_name ORDER BY 
-      cl.created_at DESC LIMIT ${paramIndex} OFFSET ${paramIndex + 1}`;
+      cl.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
       //console.error('Class retrieval query:', query);
       //console.error('Class retrieval params:', params);
@@ -540,13 +540,13 @@ router.get('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher'
       let paramIndex = 2;
 
       if (class_id) {
-        whereClause += ` AND a.class_id = ${paramIndex}`;
+        whereClause += ` AND a.class_id = $${paramIndex}`;
         params.push(class_id);
         paramIndex++;
       }
 
       if (status) {
-        whereClause += ` AND a.status = ${paramIndex}`;
+        whereClause += ` AND a.status = $${paramIndex}`;
         params.push(status);
         paramIndex++;
       }
@@ -1013,13 +1013,13 @@ router.get('/classes/:classId/results',
       let paramIndex = 2;
 
       if (student_id) {
-        query += ` AND r.student_id = ${paramIndex}`;
+        query += ` AND r.student_id = $${paramIndex}`;
         params.push(student_id);
         paramIndex++;
       }
 
       if (exam_type) {
-        query += ` AND r.exam_type = ${paramIndex}`;
+        query += ` AND r.exam_type = $${paramIndex}`;
         params.push(exam_type);
         paramIndex++;
       }
