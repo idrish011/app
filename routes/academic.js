@@ -2596,7 +2596,8 @@ router.get('/admission-inquiries',
 
       query += ` ORDER BY created_at DESC LIMIT ${paramIndex++} OFFSET ${paramIndex++}`;
       params.push(limit, offset);
-
+      console.error('Get admission inquiries query:', query);
+      console.error('Get admission inquiries params:', params);
       const inquiries = await db.all(query, params);
 
       // Get total count
