@@ -86,12 +86,12 @@ router.get('/courses',
       let paramIndex = 2;
 
       if (search) {
-        query += ` AND (c.name LIKE ${paramIndex} OR c.code LIKE ${paramIndex + 1})`;
+        query += ` AND (c.name LIKE $${paramIndex} OR c.code LIKE $${paramIndex + 1})`;
         params.push(`%${search}%`, `%${search}%`);
         paramIndex += 2;
       }
 
-      query += ` GROUP BY c.id, c.name, c.code, c.description, c.credits, c.duration_months, c.fee_amount, c.status, c.college_id, c.created_at ORDER BY c.name LIMIT ${paramIndex} OFFSET ${paramIndex + 1}`;
+      query += ` GROUP BY c.id, c.name, c.code, c.description, c.credits, c.duration_months, c.fee_amount, c.status, c.college_id, c.created_at ORDER BY c.name LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
 
       const courses = await db.all(query, params);
@@ -106,7 +106,7 @@ router.get('/courses',
       let countParamIndex = 2;
 
       if (search) {
-        countQuery += ` AND (c.name LIKE ${countParamIndex} OR c.code LIKE ${countParamIndex + 1})`;
+        countQuery += ` AND (c.name LIKE $${countParamIndex} OR c.code LIKE $${countParamIndex + 1})`;
         countParams.push(`%${search}%`, `%${search}%`);
         countParamIndex += 2;
       }
