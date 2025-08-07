@@ -255,9 +255,10 @@ router.get('/classes',
         paramIndex += 2;
       }
 
-      query += ` GROUP BY cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, cl.max_students, cl.status, cl.college_id, cl.created_at, c.name, u.first_name, u.last_name ORDER BY cl.created_at DESC LIMIT ${paramIndex} OFFSET ${paramIndex + 1}`;
+      query += `GROUP BY cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, cl.max_students, cl.status, cl.college_id, cl.created_at, c.name, u.first_name, u.last_name ORDER BY cl.created_at DESC LIMIT ${paramIndex} OFFSET ${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
-
+      console.error('Class retrieval query:', query);
+      console.error('Class retrieval params:', params);
       const classes = await db.all(query, params);
 
       res.json({
