@@ -1518,7 +1518,7 @@ router.get('/reports/attendance',
 
       res.json({
         message: 'Attendance report retrieved successfully',
-        overallRate: overallStats$1.attendance_rate || 0,
+        overallRate: overallStats?.attendance_rate || 0,
         totalStudents: overallStats?.total_students || 0,
         topCourses,
         courseStats
