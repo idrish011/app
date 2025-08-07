@@ -19,22 +19,25 @@ router.get('/student-fees', auth.authenticateToken, auth.authorizeRoles('college
       FROM student_fee_status sfs
       JOIN users u ON sfs.student_id = u.id
       JOIN fee_structures fs ON sfs.fee_structure_id = fs.id
-      WHERE sfs.college_id = ?
+      WHERE sfs.college_id = $1
     `;
     const params = [collegeId];
+    let paramIndex = 2;
     if (student_id) {
-      query += ' AND sfs.student_id = ?';
+      query += ` AND sfs.student_id = $${paramIndex++}`;
       params.push(student_id);
     }
     if (status) {
-      query += ' AND sfs.status = ?';
+      query += ` AND sfs.status = $${paramIndex++}`;
       params.push(status);
     }
     if (fee_structure_id) {
-      query += ' AND sfs.fee_structure_id = ?';
+      query += ` AND sfs.fee_structure_id = $${paramIndex++}`;
       params.push(fee_structure_id);
     }
     query += ' ORDER BY sfs.due_date DESC';
+    console.error('query listing student fees:', query);
+    console.error('params listing student fees:', params);
     const results = await db.all(query, params);
     res.json({ student_fees: results });
   } catch (error) {
@@ -64,7 +67,7 @@ router.post('/student-fees', auth.authenticateToken, auth.authorizeRoles('colleg
       `INSERT INTO student_fee_status (id, college_id, student_id, fee_structure_id, due_date, total_amount, amount_paid, status, remarks) VALUES ($1, $2, $3, $4, $5, $6, 0, 'due', $7)`,
       [id, collegeId, student_id, fee_structure_id, due_date, total_amount, remarks || null]
     );
-    const record = await db.get('SELECT * FROM student_fee_status WHERE id = ?', [id]);
+    const record = await db.get('SELECT * FROM student_fee_status WHERE id = $1', [id]);
     res.status(201).json({ message: 'Fee assigned to student', student_fee: record });
   } catch (error) {
     console.error('Error assigning fee to student:', error);
@@ -90,10 +93,10 @@ router.put('/student-fees/:id', auth.authenticateToken, auth.authorizeRoles('col
     }
 
     // Use secure update helper to prevent SQL injection
-    const { query, params } = security.secureUpdate('student_fee_status', updateFields, 'id = ?', [id]);
+    const { query, params } = security.secureUpdate('student_fee_status', updateFields, 'id = $1', [id]);
     
     await db.run(query, params);
-    const updated = await db.get('SELECT * FROM student_fee_status WHERE id = ?', [id]);
+    const updated = await db.get('SELECT * FROM student_fee_status WHERE id = $1', [id]);
     res.json({ message: 'Student fee assignment updated', student_fee: updated });
   } catch (error) {
     console.error('Error updating student fee assignment:', error);
@@ -110,7 +113,7 @@ router.post('/student-fees/:id/pay', auth.authenticateToken, auth.authorizeRoles
       return res.status(400).json({ error: 'Missing required payment fields' });
     }
     // Get current fee status
-    const fee = await db.get('SELECT * FROM student_fee_status WHERE id = ?', [id]);
+    const fee = await db.get('SELECT * FROM student_fee_status WHERE id = $1', [id]);
     if (!fee) {
       return res.status(404).json({ error: 'Student fee assignment not found' });
     }
@@ -123,16 +126,16 @@ router.post('/student-fees/:id/pay', auth.authenticateToken, auth.authorizeRoles
     }
     // Update student_fee_status
     await db.run(
-      'UPDATE student_fee_status SET amount_paid = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE student_fee_status SET amount_paid = $1, status = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
       [newAmountPaid, newStatus, id]
     );
     // Optionally, record in fee_collections
     const collectionId = uuidv4();
     await db.run(
-      `INSERT INTO fee_collections (id, college_id, student_id, fee_structure_id, amount_paid, payment_date, payment_method, transaction_id, status, remarks, collected_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO fee_collections (id, college_id, student_id, fee_structure_id, amount_paid, payment_date, payment_method, transaction_id, status, remarks, collected_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [collectionId, fee.college_id, fee.student_id, fee.fee_structure_id, amount_paid, payment_date, payment_method || null, transaction_id || null, 'paid', remarks || null, req.user.id]
     );
-    const updated = await db.get('SELECT * FROM student_fee_status WHERE id = ?', [id]);
+    const updated = await db.get('SELECT * FROM student_fee_status WHERE id = $1', [id]);
     res.json({ message: 'Payment recorded', student_fee: updated });
   } catch (error) {
     console.error('Error recording payment:', error);
@@ -145,15 +148,15 @@ router.get('/student-fees/summary', auth.authenticateToken, auth.authorizeRoles(
   try {
     const collegeId = req.user.college_id;
     // Total assigned
-    const totalAssigned = await db.get('SELECT COUNT(*) as count, SUM(total_amount) as total FROM student_fee_status WHERE college_id = ?', [collegeId]);
+    const totalAssigned = await db.get('SELECT COUNT(*) as count, SUM(total_amount) as total FROM student_fee_status WHERE college_id = $1', [collegeId]);
     // Total collected
-    const totalCollected = await db.get('SELECT SUM(amount_paid) as collected FROM student_fee_status WHERE college_id = ?', [collegeId]);
+    const totalCollected = await db.get('SELECT SUM(amount_paid) as collected FROM student_fee_status WHERE college_id = $1', [collegeId]);
     // Overdue count/amount
-    const overdue = await db.get('SELECT COUNT(*) as count, SUM(total_amount - amount_paid) as overdue FROM student_fee_status WHERE college_id = ? AND status = \'overdue\'', [collegeId]);
+    const overdue = await db.get('SELECT COUNT(*) as count, SUM(total_amount - amount_paid) as overdue FROM student_fee_status WHERE college_id = $1 AND status = \'overdue\'', [collegeId]);
     // Due count/amount
-    const due = await db.get('SELECT COUNT(*) as count, SUM(total_amount - amount_paid) as due FROM student_fee_status WHERE college_id = ? AND status = \'due\'', [collegeId]);
+    const due = await db.get('SELECT COUNT(*) as count, SUM(total_amount - amount_paid) as due FROM student_fee_status WHERE college_id = $1 AND status = \'due\'', [collegeId]);
     // Paid count/amount
-    const paid = await db.get('SELECT COUNT(*) as count, SUM(total_amount) as paid FROM student_fee_status WHERE college_id = ? AND status = \'paid\'', [collegeId]);
+    const paid = await db.get('SELECT COUNT(*) as count, SUM(total_amount) as paid FROM student_fee_status WHERE college_id = $1 AND status = \'paid\'', [collegeId]);
     res.json({
       total_assigned: totalAssigned,
       total_collected: totalCollected,
