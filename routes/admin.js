@@ -115,7 +115,7 @@ router.get('/users', auth.authenticateToken, auth.authorizeRoles('super_admin', 
 
     // For college_admin, restrict to their own college
     if (req.user.role === 'college_admin') {
-      whereConditions.push(`u.college_id = ${paramIndex++}`);
+      whereConditions.push(`u.college_id = $${paramIndex++}`);
       params.push(req.user.college_id);
       
       // College admins can only see students, teachers, and parents
@@ -123,18 +123,18 @@ router.get('/users', auth.authenticateToken, auth.authorizeRoles('super_admin', 
     }
 
     if (search) {
-      whereConditions.push(`(u.first_name ILIKE ${paramIndex++} OR u.last_name ILIKE ${paramIndex++} OR u.email ILIKE ${paramIndex++})`);
+      whereConditions.push(`(u.first_name ILIKE $${paramIndex++} OR u.last_name ILIKE $${paramIndex++} OR u.email ILIKE $${paramIndex++})`);
       const searchTerm = `%${search}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
 
     if (role) {
-      whereConditions.push(`u.role = ${paramIndex++}`);
+      whereConditions.push(`u.role = $${paramIndex++}`);
       params.push(role);
     }
 
     if (query_college_id && req.user.role === 'super_admin') {
-      whereConditions.push(`u.college_id = ${paramIndex++}`);
+      whereConditions.push(`u.college_id = $${paramIndex++}`);
       params.push(query_college_id);
     }
 
@@ -156,7 +156,7 @@ router.get('/users', auth.authenticateToken, auth.authorizeRoles('super_admin', 
       LEFT JOIN colleges c ON u.college_id = c.id 
       ${whereClause}
       ORDER BY u.created_at DESC 
-      LIMIT ${paramIndex++} OFFSET ${paramIndex++}
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `;
     const users = await db.all(usersQuery, [...params, limitNum, offset]);
 
@@ -652,13 +652,13 @@ router.get('/colleges', auth.authenticateToken, auth.authorizeRoles('super_admin
 
     if (search) {
       // Use ILIKE for case-insensitive search in PostgreSQL
-      whereConditions.push(`(name ILIKE ${paramIndex++} OR domain ILIKE ${paramIndex++})`);
+      whereConditions.push(`(name ILIKE $${paramIndex++} OR domain ILIKE $${paramIndex++})`);
       const searchTerm = `%${search}%`;
       params.push(searchTerm, searchTerm);
     }
 
     if (subscription_status) {
-      whereConditions.push(`subscription_status = ${paramIndex++}`);
+      whereConditions.push(`subscription_status = $${paramIndex++}`);
       params.push(subscription_status);
     }
 
@@ -674,7 +674,7 @@ router.get('/colleges', auth.authenticateToken, auth.authorizeRoles('super_admin
       SELECT * FROM colleges 
       ${whereClause}
       ORDER BY created_at DESC 
-      LIMIT ${paramIndex++} OFFSET ${paramIndex++}
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `;
     const colleges = await db.all(collegesQuery, [...params, limitNum, offset]);
 
@@ -871,37 +871,37 @@ router.get('/logs', auth.authenticateToken, auth.authorizeRoles('super_admin'), 
 
     // Build where conditions
     if (user_id) {
-      whereConditions.push(`user_id = ${paramIndex++}`);
+      whereConditions.push(`user_id = $${paramIndex++}`);
       params.push(user_id);
     }
 
     if (user_role) {
-      whereConditions.push(`user_role = ${paramIndex++}`);
+      whereConditions.push(`user_role = $${paramIndex++}`);
       params.push(user_role);
     }
 
     if (action) {
-      whereConditions.push(`action = ${paramIndex++}`);
+      whereConditions.push(`action = $${paramIndex++}`);
       params.push(action);
     }
 
     if (entity) {
-      whereConditions.push(`entity = ${paramIndex++}`);
+      whereConditions.push(`entity = $${paramIndex++}`);
       params.push(entity);
     }
 
     if (start_date) {
-      whereConditions.push(`timestamp >= ${paramIndex++}`);
+      whereConditions.push(`timestamp >= $${paramIndex++}`);
       params.push(start_date);
     }
 
     if (end_date) {
-      whereConditions.push(`timestamp <= ${paramIndex++}`);
+      whereConditions.push(`timestamp <= $${paramIndex++}`);
       params.push(end_date);
     }
 
     if (search) {
-      whereConditions.push(`(details ILIKE ${paramIndex++} OR user_email ILIKE ${paramIndex++} OR action ILIKE ${paramIndex++})`);
+      whereConditions.push(`(details ILIKE $${paramIndex++} OR user_email ILIKE $${paramIndex++} OR action ILIKE $${paramIndex++})`);
       const searchTerm = `%${search}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
@@ -917,7 +917,7 @@ router.get('/logs', auth.authenticateToken, auth.authorizeRoles('super_admin'), 
       SELECT * FROM activity_logs 
       ${whereClause}
       ORDER BY timestamp DESC 
-      LIMIT ${paramIndex++} OFFSET ${paramIndex++}
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `;
     const logsResult = await db.all(logsQuery, [...params, limit, offset]);
 
