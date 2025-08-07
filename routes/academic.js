@@ -86,12 +86,12 @@ router.get('/courses',
       let paramIndex = 2;
 
       if (search) {
-        query += ` AND (c.name LIKE $${paramIndex} OR c.code LIKE $${paramIndex + 1})`;
+        query += ` AND (c.name LIKE ${paramIndex} OR c.code LIKE ${paramIndex + 1})`;
         params.push(`%${search}%`, `%${search}%`);
         paramIndex += 2;
       }
 
-      query += ` GROUP BY c.id, c.name, c.code, c.description, c.credits, c.duration_months, c.fee_amount, c.status, c.college_id, c.created_at ORDER BY c.name LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      query += ` GROUP BY c.id, c.name, c.code, c.description, c.credits, c.duration_months, c.fee_amount, c.status, c.college_id, c.created_at ORDER BY c.name LIMIT ${paramIndex} OFFSET ${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
 
       const courses = await db.all(query, params);
@@ -106,7 +106,7 @@ router.get('/courses',
       let countParamIndex = 2;
 
       if (search) {
-        countQuery += ` AND (c.name LIKE $${countParamIndex} OR c.code LIKE $${countParamIndex + 1})`;
+        countQuery += ` AND (c.name LIKE ${countParamIndex} OR c.code LIKE ${countParamIndex + 1})`;
         countParams.push(`%${search}%`, `%${search}%`);
         countParamIndex += 2;
       }
@@ -238,26 +238,26 @@ router.get('/classes',
       let paramIndex = 2;
 
       if (course_id) {
-        query += ` AND cl.course_id = $${paramIndex}`;
+        query += ` AND cl.course_id = ${paramIndex}`;
         params.push(course_id);
         paramIndex++;
       }
 
       if (teacher_id) {
-        query += ` AND cl.teacher_id = $${paramIndex}`;
+        query += ` AND cl.teacher_id = ${paramIndex}`;
         params.push(teacher_id);
         paramIndex++;
       }
 
       if (search) {
-        query += ` AND (cl.name LIKE $${paramIndex} OR c.name LIKE $${paramIndex + 1})`;
+        query += ` AND (cl.name LIKE ${paramIndex} OR c.name LIKE ${paramIndex + 1})`;
         params.push(`%${search}%`, `%${search}%`);
         paramIndex += 2;
       }
 
       query += `GROUP BY cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, 
       cl.max_students, cl.status, cl.college_id, cl.created_at, c.name, u.first_name, u.last_name ORDER BY 
-      cl.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      cl.created_at DESC LIMIT ${paramIndex} OFFSET ${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
       //console.error('Class retrieval query:', query);
       //console.error('Class retrieval params:', params);
@@ -540,13 +540,13 @@ router.get('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher'
       let paramIndex = 2;
 
       if (class_id) {
-        whereClause += ` AND a.class_id = $${paramIndex}`;
+        whereClause += ` AND a.class_id = ${paramIndex}`;
         params.push(class_id);
         paramIndex++;
       }
 
       if (status) {
-        whereClause += ` AND a.status = $${paramIndex}`;
+        whereClause += ` AND a.status = ${paramIndex}`;
         params.push(status);
         paramIndex++;
       }
@@ -2581,34 +2581,34 @@ router.get('/admission-inquiries',
       const offset = (page - 1) * limit;
       const collegeId = req.user.college_id;
 
+      const params = [collegeId];
       let query = `
         SELECT * FROM admission_inquiries 
         WHERE college_id = $1
       `;
-      const params = [collegeId];
 
       if (search) {
-        query += ' AND (name LIKE $1 OR email LIKE $2 OR phone LIKE $3 OR message LIKE $4)';
         const searchTerm = `%${search}%`;
+        query += ' AND (name LIKE $2 OR email LIKE $3 OR phone LIKE $4 OR message LIKE $5)';
         params.push(searchTerm, searchTerm, searchTerm, searchTerm);
       }
 
-      query += ' ORDER BY created_at DESC LIMIT $2 OFFSET $3';
+      query += ` ORDER BY created_at DESC LIMIT ${params.length + 1} OFFSET ${params.length + 2}`;
       params.push(limit, offset);
 
       const inquiries = await db.all(query, params);
 
       // Get total count
+      const countParams = [collegeId];
       let countQuery = `
         SELECT COUNT(*) as total 
         FROM admission_inquiries 
         WHERE college_id = $1
       `;
-      const countParams = [collegeId];
 
       if (search) {
-        countQuery += ' AND (name LIKE $1 OR email LIKE $2 OR phone LIKE $3 OR message LIKE $4)';
         const searchTerm = `%${search}%`;
+        countQuery += ' AND (name LIKE $2 OR email LIKE $3 OR phone LIKE $4 OR message LIKE $5)';
         countParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
       }
 
