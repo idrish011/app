@@ -2593,8 +2593,8 @@ router.get('/admission-inquiries',
         params.push(searchTerm, searchTerm, searchTerm, searchTerm);
       }
 
-      query += ' ORDER BY created_at DESC LIMIT $1 OFFSET $2';
-      params.push(parseInt(limit), offset);
+      query += ' ORDER BY created_at DESC LIMIT $2 OFFSET $3';
+      params.push(limit, offset);
 
       const inquiries = await db.all(query, params);
 
