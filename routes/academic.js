@@ -2589,12 +2589,12 @@ router.get('/admission-inquiries',
       let paramIndex = 2;
 
       if (search) {
-        query += ` AND (name LIKE ${paramIndex++} OR email LIKE ${paramIndex++} OR phone LIKE ${paramIndex++} OR message LIKE ${paramIndex++})`;
+        query += ` AND (name LIKE $${paramIndex++} OR email LIKE $${paramIndex++} OR phone LIKE $${paramIndex++} OR message LIKE $${paramIndex++})`;
         const searchTerm = `%${search}%`;
         params.push(searchTerm, searchTerm, searchTerm, searchTerm);
       }
 
-      query += ` ORDER BY created_at DESC LIMIT ${paramIndex++} OFFSET ${paramIndex++}`;
+      query += ` ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
       params.push(limit, offset);
       console.error('Get admission inquiries query:', query);
       console.error('Get admission inquiries params:', params);
@@ -2610,7 +2610,7 @@ router.get('/admission-inquiries',
       let countParamIndex = 2;
 
       if (search) {
-        countQuery += ` AND (name LIKE ${countParamIndex++} OR email LIKE ${countParamIndex++} OR phone LIKE ${countParamIndex++} OR message LIKE ${countParamIndex++})`;
+        countQuery += ` AND (name LIKE $${countParamIndex++} OR email LIKE $${countParamIndex++} OR phone LIKE $${countParamIndex++} OR message LIKE $${countParamIndex++})`;
         const searchTerm = `%${search}%`;
         countParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
       }
