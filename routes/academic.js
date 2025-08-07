@@ -238,29 +238,29 @@ router.get('/classes',
       let paramIndex = 2;
 
       if (course_id) {
-        query += ` AND cl.course_id = $${paramIndex}`;
+        query += ` AND cl.course_id = ${paramIndex}`;
         params.push(course_id);
         paramIndex++;
       }
 
       if (teacher_id) {
-        query += ` AND cl.teacher_id = $${paramIndex}`;
+        query += ` AND cl.teacher_id = ${paramIndex}`;
         params.push(teacher_id);
         paramIndex++;
       }
 
       if (search) {
-        query += ` AND (cl.name LIKE $${paramIndex} OR c.name LIKE $${paramIndex + 1})`;
+        query += ` AND (cl.name LIKE ${paramIndex} OR c.name LIKE ${paramIndex + 1})`;
         params.push(`%${search}%`, `%${search}%`);
         paramIndex += 2;
       }
 
       query += `GROUP BY cl.id, cl.name, cl.course_id, cl.semester_id, cl.teacher_id, cl.schedule, cl.room_number, 
       cl.max_students, cl.status, cl.college_id, cl.created_at, c.name, u.first_name, u.last_name ORDER BY 
-      cl.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      cl.created_at DESC LIMIT ${paramIndex} OFFSET ${paramIndex + 1}`;
       params.push(parseInt(limit), offset);
-      console.error('Class retrieval query:', query);
-      console.error('Class retrieval params:', params);
+      //console.error('Class retrieval query:', query);
+      //console.error('Class retrieval params:', params);
       const classes = await db.all(query, params);
 
       res.json({
@@ -1899,7 +1899,7 @@ router.get('/classes/:classId/attendance', auth.authenticateToken, auth.authoriz
     if (req.user.role === 'teacher') {
       // Verify teacher owns this class
       const classExists = await db.get(`
-        SELECT * FROM classes WHERE id = ? AND teacher_id = ?
+        SELECT * FROM classes WHERE id = $1 AND teacher_id = $2
       `, [classId, req.user.id]);
 
       if (!classExists) {
