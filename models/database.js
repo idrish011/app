@@ -297,7 +297,7 @@ class Database {
         assignment_id UUID NOT NULL,
         student_id UUID NOT NULL,
         submission_date TIMESTAMP NOT NULL,
-        file_url TEXT,
+        document_oid OID,
         remarks TEXT,
         marks_obtained NUMERIC(5,2),
         feedback TEXT,

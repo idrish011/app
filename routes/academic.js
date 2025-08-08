@@ -5,6 +5,7 @@ const Database = require('../models/database');
 const multer = require('multer');
 const path = require('path');
 const pushNotificationService = require('../utils/pushNotifications');
+const fileService = require('../utils/fileService');
 
 const router = express.Router();
 const auth = new AuthMiddleware();
@@ -280,15 +281,7 @@ router.get('/classes',
 // ==================== ASSIGNMENTS ====================
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/assignments/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
@@ -361,7 +354,10 @@ router.post('/assignments', auth.authenticateToken, auth.authorizeRoles('teacher
     }
 
     const assignmentId = uuidv4();
-    const documentPath = req.file ? req.file.path : null;
+    let documentPath = null;
+    if (req.file) {
+      documentPath = await fileService.uploadFile(req.file);
+    }
 
     console.log('Creating assignment with data:', {
       assignmentId,
@@ -467,7 +463,7 @@ router.post('/assignments/:assignmentId/submit',
       // Save file if uploaded
       let documentPath = null;
       if (req.file) {
-        documentPath = req.file.path;
+        documentPath = await fileService.uploadFile(req.file);
       }
 
       const submissionId = uuidv4();
@@ -695,7 +691,10 @@ router.put('/assignments/:assignmentId', auth.authenticateToken, auth.authorizeR
       });
     }
 
-    const documentPath = req.file ? req.file.path : assignment.document_path;
+    let documentPath = assignment.document_path;
+    if (req.file) {
+      documentPath = await fileService.uploadFile(req.file);
+    }
 
     await db.run(`
       UPDATE assignments SET
@@ -795,13 +794,13 @@ router.put('/assignments/:assignmentId/grade/:studentId', auth.authenticateToken
 });
 
 // Download assignment document
-router.get('/assignments/:assignmentId/document', auth.authenticateToken, auth.authorizeRoles('teacher'), async (req, res) => {
+router.get('/assignments/:assignmentId/document', auth.authenticateToken, auth.authorizeRoles('teacher', 'student'), async (req, res) => {
   try {
     const { assignmentId } = req.params;
 
     const assignment = await db.get(`
-      SELECT document_path FROM assignments WHERE id = $1 AND created_by = $2
-    `, [assignmentId, req.user.id]);
+      SELECT document_path FROM assignments WHERE id = $1
+    `, [assignmentId]);
 
     if (!assignment || !assignment.document_path) {
       return res.status(404).json({
@@ -810,7 +809,35 @@ router.get('/assignments/:assignmentId/document', auth.authenticateToken, auth.a
       });
     }
 
-    res.download(assignment.document_path);
+    const file = await fileService.downloadFile(assignment.document_path);
+    res.send(file);
+  } catch (error) {
+    console.error('Download document error:', error);
+    res.status(500).json({
+      error: 'Failed to download document',
+      message: 'Internal server error'
+    });
+  }
+});
+
+// Download submission document
+router.get('/submissions/:submissionId/document', auth.authenticateToken, auth.authorizeRoles('teacher', 'student'), async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+
+    const submission = await db.get(`
+      SELECT document_path FROM assignment_submissions WHERE id = $1
+    `, [submissionId]);
+
+    if (!submission || !submission.document_path) {
+      return res.status(404).json({
+        error: 'Document not found',
+        message: 'Submission document not found'
+      });
+    }
+
+    const file = await fileService.downloadFile(submission.document_path);
+    res.send(file);
   } catch (error) {
     console.error('Download document error:', error);
     res.status(500).json({
@@ -2612,7 +2639,7 @@ router.get('/admission-inquiries',
       if (search) {
         countQuery += ` AND (name LIKE $${countParamIndex++} OR email LIKE $${countParamIndex++} OR phone LIKE $${countParamIndex++} OR message LIKE $${countParamIndex++})`;
         const searchTerm = `%${search}%`;
-        countParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
+        params.push(searchTerm, searchTerm, searchTerm, searchTerm);
       }
 
       const countResult = await db.get(countQuery, countParams);
